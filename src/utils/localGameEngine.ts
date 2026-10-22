@@ -263,7 +263,7 @@ export class LocalGameEngine {
 
       this.timer = setTimeout(() => {
         if (!this.destroyed) this.nextTurn();
-      }, 1400);
+      }, 2000);
     }
   }
 
@@ -518,7 +518,7 @@ export class LocalGameEngine {
 
       this.timer = setTimeout(() => {
         if (!this.destroyed) this.nextTurn();
-      }, 1400);
+      }, 2000);
     }
   }
 

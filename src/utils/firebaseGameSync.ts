@@ -301,12 +301,17 @@ export class FirebaseRoomSync {
       logs: newLogs,
     };
 
+    await this.saveRoomState(updatedRoom);
+
     if (nextPhase === 'TURN_SKIPPED') {
-      // Advance to next player
-      const nextRoom = this.advanceTurn(updatedRoom);
-      await this.saveRoomState(nextRoom);
-    } else {
-      await this.saveRoomState(updatedRoom);
+      // Allow players to see the rolled face (1, 2, 3, or 4) and 3D roll animation
+      setTimeout(async () => {
+        if (this.destroyed) return;
+        if (this.currentRoom && this.currentRoom.phase === 'TURN_SKIPPED' && this.currentRoom.lastRoll === roll) {
+          const nextRoom = this.advanceTurn(this.currentRoom);
+          await this.saveRoomState(nextRoom);
+        }
+      }, 2000);
     }
   }
 
@@ -571,8 +576,15 @@ export class FirebaseRoomSync {
         logs,
       };
 
-      const next = this.advanceTurn(updatedRoom);
-      await this.saveRoomState(next);
+      await this.saveRoomState(updatedRoom);
+
+      setTimeout(async () => {
+        if (this.destroyed) return;
+        if (this.currentRoom && this.currentRoom.phase === 'TURN_SKIPPED' && this.currentRoom.lastRoll === roll) {
+          const next = this.advanceTurn(this.currentRoom);
+          await this.saveRoomState(next);
+        }
+      }, 2000);
     }
   }
 

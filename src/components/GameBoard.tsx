@@ -200,6 +200,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   : `${currentPlayer?.name} ayaa hadda maamulaya dhibcihiisa...`}
               </p>
             )}
+            {room.phase === 'TURN_SKIPPED' && (
+              <p className="text-xs text-stone-300 font-medium bg-stone-900/80 px-3 py-1 rounded-lg border border-stone-800 inline-block">
+                {room.lastRoll
+                  ? `🎲 Lambar [${room.lastRoll}] waa eber (0 dhibco) · Wareeggu wuu dhaafayaa...`
+                  : 'Wareeggu wuu dhaafayaa...'}
+              </p>
+            )}
           </div>
         </div>
 
