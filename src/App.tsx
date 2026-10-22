@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { RoomState, PointAllocation } from './types/game.js';
 import { LobbyView } from './components/LobbyView.js';
 import { GameBoard } from './components/GameBoard.js';
@@ -6,7 +6,7 @@ import { RulesModal } from './components/RulesModal.js';
 import { VercelNoticeModal } from './components/VercelNoticeModal.js';
 import { soundManager } from './utils/audio.js';
 import { LocalGameEngine } from './utils/localGameEngine.js';
-import { P2PHostManager, P2PClientManager } from './utils/p2pNetwork.js';
+import { CloudRoomHost, CloudRoomClient } from './utils/cloudSync.js';
 
 const AVATARS = [
   { id: 'nin', emoji: '👨', label: 'Nin (Man)' },
@@ -20,6 +20,7 @@ export default function App() {
   const [playerName, setPlayerName] = useState<string>('');
   const [selectedAvatar, setSelectedAvatar] = useState<string>('🎲');
   const [joinCode, setJoinCode] = useState<string>('');
+  const [invitedRoomCode, setInvitedRoomCode] = useState<string>('');
   const [targetScore, setTargetScore] = useState<number>(50);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [successNotice, setSuccessNotice] = useState<string>('');
@@ -31,11 +32,11 @@ export default function App() {
     return localStorage.getItem('taraq_custom_server') || '';
   });
 
-  // Active runtime mode: 'local' | 'p2p-host' | 'p2p-client' | 'ws'
-  const modeRef = useRef<'local' | 'p2p-host' | 'p2p-client' | 'ws'>('local');
+  // Active runtime mode: 'local' | 'cloud-host' | 'cloud-client' | 'ws'
+  const modeRef = useRef<'local' | 'cloud-host' | 'cloud-client' | 'ws'>('local');
   const localEngineRef = useRef<LocalGameEngine | null>(null);
-  const p2pHostRef = useRef<P2PHostManager | null>(null);
-  const p2pClientRef = useRef<P2PClientManager | null>(null);
+  const cloudHostRef = useRef<CloudRoomHost | null>(null);
+  const cloudClientRef = useRef<CloudRoomClient | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
   // Initialize player name & avatar from localStorage or defaults
@@ -56,7 +57,9 @@ export default function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const roomParam = urlParams.get('room');
     if (roomParam) {
-      setJoinCode(roomParam.toUpperCase());
+      const code = roomParam.trim().toUpperCase();
+      setJoinCode(code);
+      setInvitedRoomCode(code);
     }
   }, []);
 
@@ -81,13 +84,13 @@ export default function App() {
       localEngineRef.current.destroy();
       localEngineRef.current = null;
     }
-    if (p2pHostRef.current) {
-      p2pHostRef.current.destroy();
-      p2pHostRef.current = null;
+    if (cloudHostRef.current) {
+      cloudHostRef.current.destroy();
+      cloudHostRef.current = null;
     }
-    if (p2pClientRef.current) {
-      p2pClientRef.current.destroy();
-      p2pClientRef.current = null;
+    if (cloudClientRef.current) {
+      cloudClientRef.current.destroy();
+      cloudClientRef.current = null;
     }
     if (wsRef.current) {
       wsRef.current.close();
@@ -107,7 +110,7 @@ export default function App() {
     }
   };
 
-  // 1. FAST LOCAL BOT GAME (100% Client-side, never fails on Vercel)
+  // 1. FAST LOCAL BOT GAME (100% Client-side, never fails anywhere)
   const handleStartLocalBotGame = () => {
     cleanupAllConnections();
     setIsConnecting(true);
@@ -142,18 +145,16 @@ export default function App() {
     }
   };
 
-  // 2. CREATE ROOM (P2P Mesh or WebSocket fallback)
+  // 2. CREATE ROOM (Cloud Sync over High-Availability Network, 100% Vercel & Mobile Ready)
   const handleCreateRoom = async (autoStartWithBots: boolean = false) => {
     cleanupAllConnections();
     setIsConnecting(true);
     setErrorMsg('');
 
-    // Check if custom WebSocket URL is configured or if we should try WebSocket first
-    const isVercelHost = window.location.hostname.endsWith('vercel.app');
     const wsTarget = customServerUrl.trim();
 
+    // If custom WS server is configured, try it
     if (wsTarget && !autoStartWithBots) {
-      // Connect to user's dedicated WebSocket server
       try {
         const ws = new WebSocket(wsTarget);
         wsRef.current = ws;
@@ -190,23 +191,21 @@ export default function App() {
         };
 
         ws.onerror = () => {
-          // Fall back to P2P Host seamlessly!
-          startP2PHostRoom(autoStartWithBots);
+          startCloudHostRoom(autoStartWithBots);
         };
         return;
       } catch {
-        startP2PHostRoom(autoStartWithBots);
+        startCloudHostRoom(autoStartWithBots);
         return;
       }
     }
 
-    // Default for Vercel: P2PHostManager which allows sharing room code with friends without Node server!
-    startP2PHostRoom(autoStartWithBots);
+    startCloudHostRoom(autoStartWithBots);
   };
 
-  const startP2PHostRoom = (autoStartWithBots: boolean = false) => {
+  const startCloudHostRoom = (autoStartWithBots: boolean = false) => {
     try {
-      const hostMgr = new P2PHostManager(
+      const host = new CloudRoomHost(
         playerName,
         selectedAvatar,
         20,
@@ -215,29 +214,28 @@ export default function App() {
           handleGameEvent(event);
         },
         (errMsg) => {
-          console.warn('P2P Host warning:', errMsg);
+          console.warn('Cloud Host notice:', errMsg);
         },
         (roomCode) => {
           setIsConnecting(false);
-          setSuccessNotice(`✅ Qolka [${roomCode}] waa diyaar! Koodhka u dir asxaabtaada.`);
+          setSuccessNotice(`✅ Qolka [${roomCode}] waa diyaar! Furiha ama Link-ga u dir asxaabtaada.`);
           setTimeout(() => setSuccessNotice(''), 5000);
         }
       );
 
-      p2pHostRef.current = hostMgr;
-      modeRef.current = 'p2p-host';
-      const hostId = hostMgr.engine.getHostId();
+      cloudHostRef.current = host;
+      modeRef.current = 'cloud-host';
+      const hostId = host.engine.getHostId();
       setMyPlayerId(hostId);
-      setRoom(hostMgr.engine.getRoom());
-      setIsConnecting(false);
+      setRoom(host.engine.getRoom());
 
       if (autoStartWithBots) {
-        hostMgr.engine.addBot(2);
-        hostMgr.engine.startGame();
+        host.engine.addBot(2);
+        host.engine.startGame();
       }
     } catch (err: any) {
-      console.error('Failed to create P2P room, falling back to local engine', err);
-      // Pure local fallback guarantees it never fails!
+      console.error('Failed to create cloud room', err);
+      // Pure local fallback
       const engine = new LocalGameEngine(playerName, selectedAvatar, 20);
       localEngineRef.current = engine;
       modeRef.current = 'local';
@@ -251,9 +249,10 @@ export default function App() {
     }
   };
 
-  // 3. JOIN ROOM (P2P Client or WebSocket)
-  const handleJoinRoom = async () => {
-    if (!joinCode.trim()) {
+  // 3. JOIN ROOM (Universal Cloud Real-Time Connection)
+  const handleJoinRoom = async (overrideCode?: string) => {
+    const targetCode = (overrideCode || joinCode).trim().toUpperCase();
+    if (!targetCode) {
       setErrorMsg('Fadlan geli furiha ama koodhka qolka');
       return;
     }
@@ -261,8 +260,6 @@ export default function App() {
     cleanupAllConnections();
     setIsConnecting(true);
     setErrorMsg('');
-
-    const trimmedCode = joinCode.trim().toUpperCase();
 
     // If custom WS server is configured, try WS first
     if (customServerUrl.trim()) {
@@ -275,7 +272,7 @@ export default function App() {
           ws.send(
             JSON.stringify({
               type: 'JOIN_ROOM',
-              roomCode: trimmedCode,
+              roomCode: targetCode,
               playerName: playerName.trim() || 'Ciyaaryahan',
               avatar: selectedAvatar,
             })
@@ -302,22 +299,21 @@ export default function App() {
         };
 
         ws.onerror = () => {
-          connectP2PClient(trimmedCode);
+          connectCloudClient(targetCode);
         };
         return;
       } catch {
-        connectP2PClient(trimmedCode);
+        connectCloudClient(targetCode);
         return;
       }
     }
 
-    // Default: Connect via WebRTC P2P
-    connectP2PClient(trimmedCode);
+    connectCloudClient(targetCode);
   };
 
-  const connectP2PClient = (code: string) => {
+  const connectCloudClient = (code: string) => {
     try {
-      const client = new P2PClientManager(
+      const client = new CloudRoomClient(
         code,
         playerName.trim() || 'Ciyaaryahan',
         selectedAvatar,
@@ -340,16 +336,8 @@ export default function App() {
         }
       );
 
-      p2pClientRef.current = client;
-      modeRef.current = 'p2p-client';
-
-      // Timeout safety
-      setTimeout(() => {
-        if (!room && isConnecting) {
-          setIsConnecting(false);
-          setErrorMsg(`Lama xiriiri karin qolka [${code}]. Hubi in qofka sameeyay uu qolka ku jiro.`);
-        }
-      }, 7000);
+      cloudClientRef.current = client;
+      modeRef.current = 'cloud-client';
     } catch (err: any) {
       setIsConnecting(false);
       setErrorMsg('Khalad ayaa ku yimid ku biirista qolka.');
@@ -361,8 +349,8 @@ export default function App() {
     soundManager.playClick();
     if (modeRef.current === 'local') {
       localEngineRef.current?.startGame();
-    } else if (modeRef.current === 'p2p-host') {
-      p2pHostRef.current?.engine.startGame();
+    } else if (modeRef.current === 'cloud-host') {
+      cloudHostRef.current?.engine.startGame();
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'START_GAME' }));
     }
@@ -372,8 +360,8 @@ export default function App() {
     soundManager.playClick();
     if (modeRef.current === 'local') {
       localEngineRef.current?.addBot(count);
-    } else if (modeRef.current === 'p2p-host') {
-      p2pHostRef.current?.engine.addBot(count);
+    } else if (modeRef.current === 'cloud-host') {
+      cloudHostRef.current?.engine.addBot(count);
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'ADD_BOT', count }));
     }
@@ -383,8 +371,8 @@ export default function App() {
     soundManager.playClick();
     if (modeRef.current === 'local') {
       localEngineRef.current?.removePlayer(playerId);
-    } else if (modeRef.current === 'p2p-host') {
-      p2pHostRef.current?.engine.removePlayer(playerId);
+    } else if (modeRef.current === 'cloud-host') {
+      cloudHostRef.current?.engine.removePlayer(playerId);
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'REMOVE_PLAYER', playerId }));
     }
@@ -393,10 +381,10 @@ export default function App() {
   const handleRollDice = () => {
     if (modeRef.current === 'local') {
       localEngineRef.current?.rollDice(myPlayerId);
-    } else if (modeRef.current === 'p2p-host') {
-      p2pHostRef.current?.engine.rollDice(myPlayerId);
-    } else if (modeRef.current === 'p2p-client') {
-      p2pClientRef.current?.send({ type: 'ROLL_DICE' });
+    } else if (modeRef.current === 'cloud-host') {
+      cloudHostRef.current?.engine.rollDice(myPlayerId);
+    } else if (modeRef.current === 'cloud-client') {
+      cloudClientRef.current?.sendAction({ type: 'ROLL_DICE' });
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'ROLL_DICE' }));
     }
@@ -406,10 +394,10 @@ export default function App() {
     soundManager.playPointsScored();
     if (modeRef.current === 'local') {
       localEngineRef.current?.submitActions(myPlayerId, allocation);
-    } else if (modeRef.current === 'p2p-host') {
-      p2pHostRef.current?.engine.submitActions(myPlayerId, allocation);
-    } else if (modeRef.current === 'p2p-client') {
-      p2pClientRef.current?.send({ type: 'SUBMIT_ACTIONS', allocation });
+    } else if (modeRef.current === 'cloud-host') {
+      cloudHostRef.current?.engine.submitActions(myPlayerId, allocation);
+    } else if (modeRef.current === 'cloud-client') {
+      cloudClientRef.current?.sendAction({ type: 'SUBMIT_ACTIONS', allocation });
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'SUBMIT_ACTIONS', allocation }));
     }
@@ -419,8 +407,8 @@ export default function App() {
     soundManager.playClick();
     if (modeRef.current === 'local') {
       localEngineRef.current?.restartGame();
-    } else if (modeRef.current === 'p2p-host') {
-      p2pHostRef.current?.engine.restartGame();
+    } else if (modeRef.current === 'cloud-host') {
+      cloudHostRef.current?.engine.restartGame();
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'RESTART_GAME' }));
     }
@@ -429,10 +417,10 @@ export default function App() {
   const handleSendChat = (message: string) => {
     if (modeRef.current === 'local') {
       localEngineRef.current?.sendChat(myPlayerId, message);
-    } else if (modeRef.current === 'p2p-host') {
-      p2pHostRef.current?.engine.sendChat(myPlayerId, message);
-    } else if (modeRef.current === 'p2p-client') {
-      p2pClientRef.current?.send({ type: 'SEND_CHAT', message });
+    } else if (modeRef.current === 'cloud-host') {
+      cloudHostRef.current?.engine.sendChat(myPlayerId, message);
+    } else if (modeRef.current === 'cloud-client') {
+      cloudClientRef.current?.sendAction({ type: 'SEND_CHAT', message });
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'SEND_CHAT', message }));
     }
@@ -485,7 +473,7 @@ export default function App() {
                 title="Xogta Vercel & Shabakadda"
               >
                 <span>▲</span>
-                <span className="hidden md:inline">Vercel Status</span>
+                <span className="hidden md:inline">Server Info</span>
               </button>
 
               <button
@@ -550,6 +538,38 @@ export default function App() {
         {!room && (
           <div className="flex-1 flex flex-col justify-center items-center py-4 sm:py-8 animate-fade-in">
             <div className="w-full max-w-3xl flex flex-col gap-6">
+
+              {/* Special Invited Room Card (If loaded with ?room=CODE) */}
+              {invitedRoomCode && (
+                <div className="bg-gradient-to-r from-emerald-950/80 via-stone-900 to-emerald-950/80 border-2 border-emerald-500/60 rounded-3xl p-5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-bounce-subtle">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-2xl">
+                      💌
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase font-extrabold text-emerald-400 tracking-wider">
+                        Casuumaad Toos ah! (Room Invitation)
+                      </div>
+                      <div className="text-base font-bold text-white flex items-center gap-2 mt-0.5">
+                        <span>Waxaa lagugu soo casuumay Qolka:</span>
+                        <span className="font-mono text-amber-300 font-extrabold text-lg px-2 py-0.5 bg-stone-950 rounded-lg border border-amber-500/30">
+                          {invitedRoomCode}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleJoinRoom(invitedRoomCode)}
+                    disabled={isConnecting}
+                    className="w-full sm:w-auto px-7 py-3 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black rounded-2xl shadow-lg shadow-emerald-950/60 transition-all text-sm flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+                  >
+                    <span>🚀</span>
+                    <span>{isConnecting ? 'Waa lagu xirayaa...' : 'Toos Ugu Biir (Join Now)'}</span>
+                  </button>
+                </div>
+              )}
 
               {/* 1. Name & Avatar Selection Card */}
               <div className="bg-stone-900/90 border border-stone-800 rounded-3xl p-5 sm:p-7 shadow-xl flex flex-col gap-5">
@@ -693,13 +713,6 @@ export default function App() {
                       Saaxiibkaa ma kuu soo diray Fure qol? Geli halkan si aad toos ugu biirto qolkiisa!
                     </p>
 
-                    {joinCode && (
-                      <div className="mb-2 p-2.5 bg-emerald-950/60 border border-emerald-700/60 text-emerald-300 text-xs rounded-xl flex items-center gap-2">
-                        <span>👋</span>
-                        <span>Furihii lagugu soo casuumay: <strong className="font-mono font-bold text-amber-300">{joinCode}</strong></span>
-                      </div>
-                    )}
-
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[11px] text-stone-400 font-bold uppercase tracking-wider">
                         Furiha Qolka (Room Key):
@@ -708,7 +721,7 @@ export default function App() {
                         type="text"
                         value={joinCode}
                         onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                        placeholder="GELI FURIHA (TUS. K9W4P)"
+                        placeholder="GELI FURIHA (TUS. GMNGM)"
                         className="w-full bg-stone-950 border-2 border-stone-700/80 rounded-xl px-4 py-2.5 text-base font-mono uppercase tracking-widest text-amber-400 font-bold focus:outline-none focus:border-emerald-500 shadow-inner"
                         maxLength={6}
                       />
@@ -717,7 +730,7 @@ export default function App() {
 
                   <button
                     type="button"
-                    onClick={handleJoinRoom}
+                    onClick={() => handleJoinRoom()}
                     disabled={isConnecting || !joinCode.trim()}
                     className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold rounded-2xl shadow-xl shadow-emerald-950/50 transition-all text-sm flex items-center justify-center gap-2 cursor-pointer"
                   >
