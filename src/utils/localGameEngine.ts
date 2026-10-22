@@ -301,8 +301,15 @@ export class LocalGameEngine {
       }
     }
 
+    let totalAdjustmentCost = 0;
+    for (const adj of allocation.lockAdjustments || []) {
+      if (adj.delta !== 0) {
+        totalAdjustmentCost += Math.abs(adj.delta);
+      }
+    }
+
     const selfPoints = allocation.selfPoints || 0;
-    const totalSpent = selfPoints + totalDeductions + totalLockCost + totalUnlockCost;
+    const totalSpent = selfPoints + totalDeductions + totalLockCost + totalUnlockCost + totalAdjustmentCost;
 
     if (totalSpent > maxPointsAllowed) {
       throw new Error(`Kama badsan kartid ${maxPointsAllowed} dhibcood oo aad keentay.`);
@@ -338,16 +345,51 @@ export class LocalGameEngine {
       }
 
       target.isLocked = true;
-      target.lockPoints = l.lockPoints;
+      target.lockPoints = Math.min(5, Math.max(1, l.lockPoints));
 
       this.addLog(
-        `🔒 ${player.name} wuxuu xabsiga ku xiray ${target.name} isagoo ku xiray [${l.lockPoints} dhibcood]!`,
-        `🔒 ${player.name} locked ${target.name} in jail with [${l.lockPoints} lock points]!`,
+        `🔒 ${player.name} wuxuu xabsiga ku xiray ${target.name} isagoo ku xiray [${target.lockPoints} dhibcood]!`,
+        `🔒 ${player.name} locked ${target.name} in jail with [${target.lockPoints} lock points]!`,
         'lock'
       );
     }
 
-    // 3. Unlocks
+    // 3. Lock Adjustments (Increase burden or decrease/lighten burden)
+    for (const adj of allocation.lockAdjustments || []) {
+      if (adj.delta === 0) continue;
+      const target = this.room.players.find((p) => p.id === adj.targetId);
+      if (!target || !target.isLocked) continue;
+
+      if (adj.delta > 0) {
+        const prev = target.lockPoints;
+        target.lockPoints = Math.min(5, target.lockPoints + adj.delta);
+        const added = target.lockPoints - prev;
+        this.addLog(
+          `⛓️ ${player.name} wuxuu culeyska ku kordhiyay ${target.name} (+${added}), xabsigiisu waa [${target.lockPoints}/5 dhibcood]!`,
+          `⛓️ ${player.name} added burden to ${target.name} (+${added}), jail lock is now [${target.lockPoints}/5 pts]!`,
+          'lock'
+        );
+      } else {
+        const reduceAmt = Math.abs(adj.delta);
+        target.lockPoints = Math.max(0, target.lockPoints - reduceAmt);
+        if (target.lockPoints === 0) {
+          target.isLocked = false;
+          this.addLog(
+            `🗝️ ${player.name} wuxuu xabsiga ka saaray ${target.name} isagoo dhibcihii xabsiga ka dhameeyay!`,
+            `🗝️ ${player.name} freed ${target.name} by clearing all jail points!`,
+            'unlock'
+          );
+        } else {
+          this.addLog(
+            `🗝️ ${player.name} wuxuu xabsiga ka fududeeyay ${target.name} (-${reduceAmt}), waxaa ku haray [${target.lockPoints}/5 dhibcood]!`,
+            `🗝️ ${player.name} reduced jail burden for ${target.name} (-${reduceAmt}), [${target.lockPoints}/5 pts] remaining!`,
+            'unlock'
+          );
+        }
+      }
+    }
+
+    // 4. Legacy Unlocks
     for (const targetId of allocation.unlocks || []) {
       const target = this.room.players.find((p) => p.id === targetId);
       if (target && target.isLocked) {
@@ -361,7 +403,7 @@ export class LocalGameEngine {
       }
     }
 
-    // 4. Self points
+    // 5. Self points
     if (selfPoints > 0) {
       player.score = Math.min(10, player.score + selfPoints);
       this.addLog(

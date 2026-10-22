@@ -346,8 +346,15 @@ export class FirebaseRoomSync {
       }
     }
 
+    let totalAdjustmentCost = 0;
+    for (const adj of allocation.lockAdjustments || []) {
+      if (adj.delta !== 0) {
+        totalAdjustmentCost += Math.abs(adj.delta);
+      }
+    }
+
     const selfPoints = allocation.selfPoints || 0;
-    const totalSpent = selfPoints + totalDeductions + totalLockCost + totalUnlockCost;
+    const totalSpent = selfPoints + totalDeductions + totalLockCost + totalUnlockCost + totalAdjustmentCost;
 
     if (totalSpent > room.pendingPoints) {
       throw new Error(`Kama badsan kartid ${room.pendingPoints} dhibcood.`);
@@ -375,18 +382,59 @@ export class FirebaseRoomSync {
       const target = players.find((p) => p.id === l.targetId);
       if (target && !target.isLocked && target.score === 0) {
         target.isLocked = true;
-        target.lockPoints = l.lockPoints;
+        target.lockPoints = Math.min(5, Math.max(1, l.lockPoints));
         logs.push({
           id: `log-${Date.now()}-${Math.random()}`,
           timestamp: Date.now(),
-          textSo: `🔒 ${player.name} wuxuu xabsiga ku xiray ${target.name} [${l.lockPoints} dhibcood]!`,
-          textEn: `🔒 ${player.name} locked ${target.name} [${l.lockPoints} pts]!`,
+          textSo: `🔒 ${player.name} wuxuu xabsiga ku xiray ${target.name} [${target.lockPoints} dhibcood]!`,
+          textEn: `🔒 ${player.name} locked ${target.name} [${target.lockPoints} pts]!`,
           type: 'lock',
         });
       }
     }
 
-    // 3. Unlocks
+    // 3. Lock Adjustments (Increase burden or decrease/lighten burden)
+    for (const adj of allocation.lockAdjustments || []) {
+      if (adj.delta === 0) continue;
+      const target = players.find((p) => p.id === adj.targetId);
+      if (!target || !target.isLocked) continue;
+
+      if (adj.delta > 0) {
+        const prev = target.lockPoints;
+        target.lockPoints = Math.min(5, target.lockPoints + adj.delta);
+        const added = target.lockPoints - prev;
+        logs.push({
+          id: `log-${Date.now()}-${Math.random()}`,
+          timestamp: Date.now(),
+          textSo: `⛓️ ${player.name} wuxuu culeyska ku kordhiyay ${target.name} (+${added}), xabsigiisu waa [${target.lockPoints}/5 dhibcood]!`,
+          textEn: `⛓️ ${player.name} added burden to ${target.name} (+${added}), jail is now [${target.lockPoints}/5 pts]!`,
+          type: 'lock',
+        });
+      } else {
+        const reduceAmt = Math.abs(adj.delta);
+        target.lockPoints = Math.max(0, target.lockPoints - reduceAmt);
+        if (target.lockPoints === 0) {
+          target.isLocked = false;
+          logs.push({
+            id: `log-${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            textSo: `🗝️ ${player.name} wuxuu xabsiga ka saaray ${target.name} isagoo dhibcihii xabsiga ka dhameeyay!`,
+            textEn: `🗝️ ${player.name} freed ${target.name} by clearing jail points!`,
+            type: 'unlock',
+          });
+        } else {
+          logs.push({
+            id: `log-${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            textSo: `🗝️ ${player.name} wuxuu xabsiga ka fududeeyay ${target.name} (-${reduceAmt}), waxaa ku haray [${target.lockPoints}/5 dhibcood]!`,
+            textEn: `🗝️ ${player.name} reduced jail burden for ${target.name} (-${reduceAmt}), [${target.lockPoints}/5 pts] remaining!`,
+            type: 'unlock',
+          });
+        }
+      }
+    }
+
+    // 4. Legacy Unlocks
     for (const targetId of allocation.unlocks || []) {
       const target = players.find((p) => p.id === targetId);
       if (target && target.isLocked) {
@@ -402,7 +450,7 @@ export class FirebaseRoomSync {
       }
     }
 
-    // 4. Self points
+    // 5. Self points
     if (selfPoints > 0) {
       pCurrent.score = Math.min(10, pCurrent.score + selfPoints);
       logs.push({

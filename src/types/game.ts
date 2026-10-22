@@ -48,5 +48,7 @@ export interface PointAllocation {
   selfPoints: number;
   deductions: { targetId: string; amount: number }[];
   locks: { targetId: string; lockPoints: number }[]; // Target must have effective score == 0, lockPoints 1..5
-  unlocks: string[]; // IDs of locked players to free by paying their lockPoints
+  unlocks?: string[]; // IDs of locked players to free by paying their full lockPoints
+  lockAdjustments?: { targetId: string; delta: number }[]; // delta > 0 (add burden up to 5), delta < 0 (lighten burden, reaches 0 = freed)
 }
+

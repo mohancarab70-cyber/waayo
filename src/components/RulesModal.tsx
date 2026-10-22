@@ -53,23 +53,23 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
           <div className="bg-stone-950 p-3.5 rounded-xl border border-stone-800">
             <h3 className="font-bold text-red-400 text-sm mb-1 flex items-center gap-2">
               <span>🧮</span>
-              <span>2. Xisaabta Ciyaarta & Xiritaanka Xabsiga (1 ilaa 5 Dhibcood)</span>
+              <span>2. Xisaabta Ciyaarta & Xabsiga (1 ilaa 5 Dhibcood)</span>
             </h3>
-            <ul className="list-disc list-inside space-y-1 text-xs text-stone-300">
+            <ul className="list-disc list-inside space-y-1.5 text-xs text-stone-300">
               <li>
-                <strong>Qofka 0 ah kaliya ayaa la xiri karaa:</strong> Haddii qofku leeyahay 5 dhibco, cidna ma xiri karto ilaa dhibcihiisa laga jaro oo laga dhigo <strong>0 (Eber)</strong>.
+                <strong>Qofka 0 ah kaliya ayaa la xiri karaa:</strong> Haddii qofku leeyahay dhibco, lama xiri karo ilaa dhibcihiisa laga jaro oo laga dhigo <strong>0 (Eber)</strong>.
               </li>
               <li>
-                <strong>Tusaalaha 5 Dhibcood:</strong> Haddii saaxiibkaa leeyahay 5 dhibco aadna keento 5 dhibco, ma xiri kartid balse dhibco ayaad ka jari kartaa (tusaale haddii aad ka jarto 3 dhibco, wuxuu yeelanayaa 5 - 3 = <strong>2 dhibcood</strong>). Haddii aad 5-ta ka wada jartana wuxuu noqonayaa 0, dhibco kale kuuma haraan aad ku xirto.
+                <strong>Ku xir 1 ilaa 5 dhibcood:</strong> Marka uu qofku 0 noqdo, waxaad ku xiri kartaa 1, 2, 3, 4, ama 5 dhibcood.
               </li>
               <li>
-                <strong>Tusaalaha 6 (10 Dhibcood):</strong> Haddii aad 6 keento (10 dhibcood), saaxiibkaana uu 5 leeyahay: waxaad ka jari kartaa 5-tiisii dhibcood (wuxuu noqonayaa 0), waxaana kuu soo haraya <strong>5 dhibcood oo kale (10 - 5 = 5)</strong> oo aad xabsiga kaga xiri karto (1 ilaa 5 dhibcood), ama aad qof kale xabsiga kaga soo bixin karto!
+                <strong>➕ Culeyska ugu dar (+):</strong> Qof haddii uu xabsiga ku jiro (tusaale 3 dhibcood ku xiran yahay), ciyaartooydu waxay ugu dari karaan +1 ama +2 dhibcood si uu u gaaro <strong>5 dhibcood</strong> oo ah heerka ugu sarreeya.
               </li>
               <li>
-                <strong>Xabsiga ka soo bixid:</strong> Haddii qof xabsiga ku jiro, qof kasta oo keena dhibco wuxuu bixin karaa dhibcihii lagu xiray si uu xabsiga uga soo saaro.
+                <strong>➖ Culeyska ka yaree (-):</strong> Haddii qofku 5 dhibcood ku xiran yahay, qof kasta wuxuu ka jari karaa 1, 2, 3, ama 4 dhibcood si culeyska looga yareeyo. Haddii dhibcaha xabsiga laga dhigo <strong>0</strong>, wuu xoroobayaa oo xabsiga ayuu ka baxayaa!
               </li>
               <li>
-                <strong>Xaddidaadda:</strong> Qofna ma adeegsan karo dhibco ka badan inta uu laadhuuda ku keenay!
+                <strong>Xaddidaadda:</strong> Qofna ma adeegsan karo dhibco ka badan inta uu laadhuuda ku keenay (5 ama 10 dhibcood).
               </li>
             </ul>
           </div>
