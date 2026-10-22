@@ -25,6 +25,14 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
 
   const isHost = room.hostId === currentPlayerId;
   const canStart = room.players.length >= 2;
+  const joinUrl = typeof window !== 'undefined' ? `${window.location.origin}/?room=${room.roomCode}` : `/?room=${room.roomCode}`;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(joinUrl);
+    setCopiedLink(true);
+    soundManager.playClick();
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(room.roomCode);
@@ -33,20 +41,28 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  const handleCopyLink = () => {
-    const joinUrl = `${window.location.origin}/?room=${room.roomCode}`;
-    navigator.clipboard.writeText(joinUrl);
-    setCopiedLink(true);
-    soundManager.playClick();
-    setTimeout(() => setCopiedLink(false), 2000);
-  };
-
   const handleShareWhatsApp = () => {
-    const joinUrl = `${window.location.origin}/?room=${room.roomCode}`;
     const text = encodeURIComponent(
-      `Kaalay ila ciyaar Taraq Online! 🎲\nFuriha Qolka waa: ${room.roomCode}\nRiix xiriirkan si aad toos ugu soo gasho:\n${joinUrl}`
+      `Kaalay ila ciyaar ciyaarta Taraq Online! 🎲\nRiix link-gan si aad toos ugu soo gasho qolkeyga:\n${joinUrl}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  };
+
+  const handleNativeShare = async () => {
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try {
+        await navigator.share({
+          title: 'Taraq - Ciyaarta Online-ka ah',
+          text: `Kaalay ila ciyaar Taraq Online! Riix link-gan toos ugu soo biir:`,
+          url: joinUrl,
+        });
+        soundManager.playClick();
+      } catch {
+        // User cancelled share
+      }
+    } else {
+      handleCopyLink();
+    }
   };
 
   const handleChatSubmit = (e: React.FormEvent) => {
@@ -58,67 +74,100 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 animate-fade-in">
-      {/* Room Header Card */}
-      <div className="bg-stone-900/90 border border-stone-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs uppercase tracking-wider text-amber-500 font-bold">
-              🔑 Furiha Qolka (Room Key)
-            </span>
-            <span className="text-[10px] text-stone-400">· U dir asxaabtaada si ay kuugu soo galaan</span>
+      {/* Primary Invitation Hero Card (Link-Centric Design) */}
+      <div className="bg-gradient-to-br from-stone-900 via-stone-900 to-amber-950/40 border-2 border-amber-500/50 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4">
+        {/* Top Info Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800/80 pb-3.5">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🔗</span>
+              <h1 className="text-base sm:text-lg font-black text-amber-400">
+                Link-ga Casuumaadda Qolka (Invitation Link)
+              </h1>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-600 text-emerald-300 text-[10px] font-bold">
+                Toos u Shaqeynaya ⚡
+              </span>
+            </div>
+            <p className="text-xs text-stone-300 mt-1">
+              Link-gan u dir asxaabtaada — marka ay riixaan toos ayay qolkaaga ugu soo biirayaan adigoon fure la gelinayn!
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 mt-1.5">
-            <h1 className="text-3xl sm:text-4xl font-extrabold font-mono tracking-widest text-amber-400 bg-stone-950 px-3.5 py-1 rounded-xl border border-amber-600/40">
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="text-[11px] text-stone-400 font-semibold">Koodhka:</span>
+            <span className="px-3 py-1 bg-stone-950 border border-stone-800 rounded-xl font-mono font-black text-amber-400 text-sm tracking-wider">
               {room.roomCode}
-            </h1>
-
-            {/* Quick Share Buttons */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={handleCopyCode}
-                className="text-xs px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold border border-stone-700 transition-colors flex items-center gap-1.5"
-                title="Nuqul Furaha"
-              >
-                <span>{copiedCode ? '✓ Nuqul!' : '📋 Nuqul Furaha'}</span>
-              </button>
-
-              <button
-                onClick={handleCopyLink}
-                className="text-xs px-3 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 font-semibold border border-amber-500/30 transition-colors flex items-center gap-1.5"
-                title="Nuqul Xiriirka Qolka"
-              >
-                <span>{copiedLink ? '✓ Xiriirkii waa la koobiyay!' : '🔗 Nuqul Link-ga'}</span>
-              </button>
-
-              <button
-                onClick={handleShareWhatsApp}
-                className="text-xs px-3 py-2 rounded-xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-semibold transition-colors flex items-center gap-1.5"
-                title="Ku wadaag WhatsApp"
-              >
-                <span>💬 WhatsApp</span>
-              </button>
-            </div>
-          </div>
-          <p className="text-xs text-stone-400 mt-2">
-            Asxaabtaadu waxay gelin karaan furiha <strong className="text-amber-400 font-mono">{room.roomCode}</strong> ama riixi karaan link-ga tooska ah!
-          </p>
-        </div>
-
-        {/* Room Info */}
-        <div className="flex items-center gap-3 text-xs text-stone-400">
-          <div className="bg-stone-950 px-4 py-2 rounded-xl border border-stone-800 text-center">
-            <div className="text-[10px] text-stone-500 uppercase">Ciyaartooy</div>
-            <div className="text-base font-bold text-amber-400 font-mono">
-              {room.players.length} / {room.settings.maxPlayers || 20}
-            </div>
-          </div>
-          <div className="bg-stone-950 px-4 py-2 rounded-xl border border-stone-800 text-center">
-            <div className="text-[10px] text-stone-500 uppercase">Guusha</div>
-            <div className="text-xs font-bold text-emerald-400">
-              Kan Ugu Dambeeya ee Xira
+            </span>
+            <div className="bg-stone-950 px-3 py-1 rounded-xl border border-stone-800 text-xs font-bold text-stone-300">
+              👥 {room.players.length}/{room.settings.maxPlayers || 20}
             </div>
           </div>
         </div>
+
+        {/* Link Input + Main Action Buttons */}
+        <div className="flex flex-col md:flex-row items-stretch gap-2.5">
+          {/* Clickable link display */}
+          <div
+            onClick={handleCopyLink}
+            className="flex-1 bg-stone-950 border border-amber-600/40 hover:border-amber-400 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 cursor-pointer group transition-all shadow-inner"
+            title="Riix si aad u koobiyeysato link-ga"
+          >
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <span className="text-amber-400 text-lg">🔗</span>
+              <span className="font-mono text-xs sm:text-sm text-stone-200 truncate select-all">
+                {joinUrl}
+              </span>
+            </div>
+            <span className="text-[11px] text-amber-400 font-bold whitespace-nowrap bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 group-hover:bg-amber-500/20 transition-all">
+              {copiedLink ? '✓ Waa la koobiyay!' : 'Riix si aad u qaadato'}
+            </span>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-stretch gap-2">
+            <button
+              onClick={handleCopyLink}
+              className={`flex-1 sm:flex-none px-5 py-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg whitespace-nowrap ${
+                copiedLink
+                  ? 'bg-emerald-500 text-stone-950 shadow-emerald-950/60 scale-102 font-extrabold'
+                  : 'bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 shadow-amber-950/50'
+              }`}
+            >
+              <span>{copiedLink ? '✓' : '📋'}</span>
+              <span>{copiedLink ? 'Link-gii Waa la Koobiyay!' : 'Koobiyeey Link-ga'}</span>
+            </button>
+
+            <button
+              onClick={handleShareWhatsApp}
+              className="flex-1 sm:flex-none px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-950/40 cursor-pointer whitespace-nowrap"
+              title="Toos ugu dir WhatsApp asxaabtaada"
+            >
+              <span>💬</span>
+              <span>WhatsApp</span>
+            </button>
+
+            {typeof navigator !== 'undefined' && 'share' in navigator && (
+              <button
+                onClick={handleNativeShare}
+                className="px-3.5 py-3 rounded-2xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all border border-stone-700 cursor-pointer"
+                title="Wadaag (Share) meel kasta"
+              >
+                <span>📤</span>
+                <span className="hidden sm:inline">Wadaag</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Dynamic feedback notice */}
+        {copiedLink && (
+          <div className="bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 text-xs px-4 py-2 rounded-xl flex items-center gap-2 animate-fade-in font-medium">
+            <span>✅</span>
+            <span>
+              Link-ga waa la koobiyay! Toos ugu dir asxaabtaada (WhatsApp, Telegram, ama SMS) si ay toos kuugu soo galaan!
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Players List Grid */}
