@@ -56,10 +56,13 @@ export const VercelNoticeModal: React.FC<VercelNoticeModalProps> = ({
             </h3>
             <ul className="list-disc pl-4 space-y-1.5">
               <li>
-                <strong>Habka Gudaha (Local Browser Engine):</strong> Ciyaarta hadda 100% waxay ku dhex shaqeysaa browser-kaaga adigoo ku ciyaari kara Bots (ilaa 20 ciyaartooy) ama offline, waligiisna ma fashilmayo Vercel!
+                <strong>Firebase Firestore Real-Time:</strong> Ciyaarta hadda waxay ku xiran tahay Google Cloud Firebase Firestore. Waxay isticmaashaa standard Port 443 (HTTPS), taasoo ka dhigan in Vercel, taleefannada gacanta (4G/5G), iyo browser-yada ay si toos ah iskugu xirmaan iyadoon wax server gooni ah la kireysan!
               </li>
               <li>
-                <strong>Qolalka Tooska ah (WebRTC P2P):</strong> Waxaad furan kartaa qol, koodhka ayaadna asxaabtaada siin kartaa; waxay kuugu soo biirayaan toos taleefannadooda iyo kombuyuutarradooda iyadoo la adeegsanayo WebRTC P2P (server la'aan).
+                <strong>Link-ga Casuumaadda (1-Click Join):</strong> Qofka qolka furay wuxuu link-ga u diri karaa asxaabtiisa WhatsApp ama Telegram. Qofku isla markuu link-ga taabto wuxuu toos ugu biirayaa qolka.
+              </li>
+              <li>
+                <strong>Habka Bots (Offline/Local Engine):</strong> Haddii aad offline tahay ama aad rabto ciyaar degdeg ah, waxaad toos ula dheeli kartaa Bots ilaa 20 ciyaartooy.
               </li>
             </ul>
           </div>

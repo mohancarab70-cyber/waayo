@@ -1,0 +1,75 @@
+{
+  "entities": {
+    "Room": {
+      "title": "Room",
+      "description": "Multiplayer room state for Taraq dice game",
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string",
+          "description": "Unique room code",
+          "maxLength": 64
+        },
+        "hostId": {
+          "type": "string",
+          "description": "Client identifier of the room creator",
+          "maxLength": 64
+        },
+        "hostName": {
+          "type": "string",
+          "description": "Display name of the host",
+          "maxLength": 30
+        },
+        "status": {
+          "type": "string",
+          "description": "Current room status",
+          "enum": ["waiting", "playing", "finished"]
+        },
+        "phase": {
+          "type": "string",
+          "description": "Game engine phase",
+          "enum": ["LOBBY", "ROLLING", "MANAGING", "TURN_SKIPPED", "GAME_OVER"]
+        },
+        "players": {
+          "type": "array",
+          "description": "List of players in the game room (max 20)"
+        },
+        "currentTurnIndex": {
+          "type": "number",
+          "description": "Index of current player"
+        },
+        "lastRoll": {
+          "type": "number",
+          "description": "Active dice value (1-6)"
+        },
+        "pendingPoints": {
+          "type": "number",
+          "description": "Pending points (0, 5, or 10)"
+        },
+        "winnerId": {
+          "type": "string",
+          "description": "Winner player ID if game ended"
+        },
+        "logs": {
+          "type": "array",
+          "description": "Recent game event logs"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Unix timestamp of last modification"
+        },
+        "createdAt": {
+          "type": "number",
+          "description": "Unix timestamp of room creation"
+        }
+      },
+      "required": ["roomId", "hostId", "status", "players"]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Real-time multiplayer dice game rooms"
+    }
+  }
+}

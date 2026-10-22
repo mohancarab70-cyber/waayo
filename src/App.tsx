@@ -6,7 +6,11 @@ import { RulesModal } from './components/RulesModal.js';
 import { VercelNoticeModal } from './components/VercelNoticeModal.js';
 import { soundManager } from './utils/audio.js';
 import { LocalGameEngine } from './utils/localGameEngine.js';
-import { CloudRoomHost, CloudRoomClient } from './utils/cloudSync.js';
+import {
+  FirebaseRoomSync,
+  createFirestoreRoom,
+  joinFirestoreRoom,
+} from './utils/firebaseGameSync.js';
 
 const AVATARS = [
   { id: 'nin', emoji: '👨', label: 'Nin (Man)' },
@@ -32,11 +36,10 @@ export default function App() {
     return localStorage.getItem('taraq_custom_server') || '';
   });
 
-  // Active runtime mode: 'local' | 'cloud-host' | 'cloud-client' | 'ws'
-  const modeRef = useRef<'local' | 'cloud-host' | 'cloud-client' | 'ws'>('local');
+  // Active runtime mode: 'local' | 'firebase' | 'ws'
+  const modeRef = useRef<'local' | 'firebase' | 'ws'>('local');
   const localEngineRef = useRef<LocalGameEngine | null>(null);
-  const cloudHostRef = useRef<CloudRoomHost | null>(null);
-  const cloudClientRef = useRef<CloudRoomClient | null>(null);
+  const firebaseSessionRef = useRef<FirebaseRoomSync | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
   // Initialize player name & avatar from localStorage or defaults
@@ -84,13 +87,9 @@ export default function App() {
       localEngineRef.current.destroy();
       localEngineRef.current = null;
     }
-    if (cloudHostRef.current) {
-      cloudHostRef.current.destroy();
-      cloudHostRef.current = null;
-    }
-    if (cloudClientRef.current) {
-      cloudClientRef.current.destroy();
-      cloudClientRef.current = null;
+    if (firebaseSessionRef.current) {
+      firebaseSessionRef.current.destroy();
+      firebaseSessionRef.current = null;
     }
     if (wsRef.current) {
       wsRef.current.close();
@@ -145,97 +144,53 @@ export default function App() {
     }
   };
 
-  // 2. CREATE ROOM (Cloud Sync over High-Availability Network, 100% Vercel & Mobile Ready)
+  // 2. CREATE ROOM (Firebase Firestore Real-Time, 100% Reliable on Mobile & Vercel)
   const handleCreateRoom = async (autoStartWithBots: boolean = false) => {
     cleanupAllConnections();
     setIsConnecting(true);
     setErrorMsg('');
 
-    const wsTarget = customServerUrl.trim();
-
-    // If custom WS server is configured, try it
-    if (wsTarget && !autoStartWithBots) {
-      try {
-        const ws = new WebSocket(wsTarget);
-        wsRef.current = ws;
-        modeRef.current = 'ws';
-
-        ws.onopen = () => {
-          ws.send(
-            JSON.stringify({
-              type: 'CREATE_ROOM',
-              playerName: playerName.trim() || 'Ciyaaryahan 1',
-              avatar: selectedAvatar,
-              targetScore,
-              maxPlayers: 20,
-            })
-          );
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'ROOM_CREATED' || data.type === 'ROOM_JOINED') {
-              setRoom(data.room);
-              setMyPlayerId(data.yourPlayerId);
-              setIsConnecting(false);
-            } else if (data.type === 'ROOM_UPDATE') {
-              setRoom(data.room);
-              handleGameEvent(data.event);
-            } else if (data.type === 'ERROR') {
-              setErrorMsg(data.message || 'Khalad ayaa dhacay');
-            }
-          } catch (e) {
-            console.error('Parse WS msg err', e);
-          }
-        };
-
-        ws.onerror = () => {
-          startCloudHostRoom(autoStartWithBots);
-        };
-        return;
-      } catch {
-        startCloudHostRoom(autoStartWithBots);
-        return;
-      }
-    }
-
-    startCloudHostRoom(autoStartWithBots);
-  };
-
-  const startCloudHostRoom = (autoStartWithBots: boolean = false) => {
     try {
-      const host = new CloudRoomHost(
+      const { session, roomCode, hostId } = await createFirestoreRoom(
         playerName,
         selectedAvatar,
         20,
-        (updatedRoom, event) => {
-          setRoom(updatedRoom);
-          handleGameEvent(event);
-        },
-        (errMsg) => {
-          console.warn('Cloud Host notice:', errMsg);
-        },
-        (roomCode) => {
-          setIsConnecting(false);
-          setSuccessNotice(`🎉 Qolka waa la furay! Koobiyeey link-ga sare oo u dir asxaabtaada si ay toos kuugu soo galaan.`);
-          setTimeout(() => setSuccessNotice(''), 6000);
+        {
+          onUpdate: (updatedRoom, event) => {
+            setRoom(updatedRoom);
+            handleGameEvent(event);
+          },
+          onError: (errMsg) => {
+            setErrorMsg(errMsg);
+          },
         }
       );
 
-      cloudHostRef.current = host;
-      modeRef.current = 'cloud-host';
-      const hostId = host.engine.getHostId();
+      firebaseSessionRef.current = session;
+      modeRef.current = 'firebase';
       setMyPlayerId(hostId);
-      setRoom(host.engine.getRoom());
+      setJoinCode(roomCode);
+
+      // Keep room code in URL so sharing from address bar or WhatsApp links works
+      try {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('room', roomCode);
+        window.history.replaceState({}, '', newUrl.toString());
+      } catch (e) {
+        // Safe ignore
+      }
 
       if (autoStartWithBots) {
-        host.engine.addBot(2);
-        host.engine.startGame();
+        await session.addBot(2);
+        await session.startGame();
       }
+
+      setIsConnecting(false);
+      setSuccessNotice(`🎉 Qolka waa la furay (Firebase Online)! Koobiyeey link-ga sare ama u dir WhatsApp si ay toos kuugu soo galaan.`);
+      setTimeout(() => setSuccessNotice(''), 7000);
     } catch (err: any) {
-      console.error('Failed to create cloud room', err);
-      // Pure local fallback
+      console.error('Failed to create Firebase room', err);
+      // Pure local bot fallback
       const engine = new LocalGameEngine(playerName, selectedAvatar, 20);
       localEngineRef.current = engine;
       modeRef.current = 'local';
@@ -246,6 +201,7 @@ export default function App() {
       });
       setRoom(engine.getRoom());
       setIsConnecting(false);
+      setErrorMsg('Laguma guuleysan in qolka internet-ka laga furo. Ciyaartu waxey ku furantay qaab Local/Bot ah.');
     }
   };
 
@@ -262,7 +218,7 @@ export default function App() {
     setJoinCode(clean.toUpperCase().slice(0, 10));
   };
 
-  // 3. JOIN ROOM (Universal Cloud Real-Time Connection)
+  // 3. JOIN ROOM (Firebase Firestore Real-Time over HTTPS Port 443)
   const handleJoinRoom = async (overrideCode?: string) => {
     let rawInput = (overrideCode || joinCode).trim();
     if (rawInput.includes('room=')) {
@@ -281,86 +237,44 @@ export default function App() {
     setIsConnecting(true);
     setErrorMsg('');
 
-    // If custom WS server is configured, try WS first
-    if (customServerUrl.trim()) {
-      try {
-        const ws = new WebSocket(customServerUrl.trim());
-        wsRef.current = ws;
-        modeRef.current = 'ws';
-
-        ws.onopen = () => {
-          ws.send(
-            JSON.stringify({
-              type: 'JOIN_ROOM',
-              roomCode: targetCode,
-              playerName: playerName.trim() || 'Ciyaaryahan',
-              avatar: selectedAvatar,
-            })
-          );
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'ROOM_JOINED') {
-              setRoom(data.room);
-              setMyPlayerId(data.yourPlayerId);
-              setIsConnecting(false);
-            } else if (data.type === 'ROOM_UPDATE') {
-              setRoom(data.room);
-              handleGameEvent(data.event);
-            } else if (data.type === 'ERROR') {
-              setErrorMsg(data.message || 'Khalad ayaa dhacay');
-              setIsConnecting(false);
-            }
-          } catch (e) {
-            console.error('Parse WS error', e);
-          }
-        };
-
-        ws.onerror = () => {
-          connectCloudClient(targetCode);
-        };
-        return;
-      } catch {
-        connectCloudClient(targetCode);
-        return;
-      }
-    }
-
-    connectCloudClient(targetCode);
-  };
-
-  const connectCloudClient = (code: string) => {
     try {
-      const client = new CloudRoomClient(
-        code,
+      const { session, playerId } = await joinFirestoreRoom(
+        targetCode,
         playerName.trim() || 'Ciyaaryahan',
         selectedAvatar,
         {
-          onRoomUpdate: (updatedRoom, event) => {
+          onUpdate: (updatedRoom, event) => {
             setRoom(updatedRoom);
-            if (client.myPlayerId) {
-              setMyPlayerId(client.myPlayerId);
-            }
-            setIsConnecting(false);
             handleGameEvent(event);
+            setIsConnecting(false);
           },
           onError: (msg) => {
             setIsConnecting(false);
             setErrorMsg(msg);
           },
-          onConnected: () => {
-            soundManager.playPointsScored();
-          },
         }
       );
 
-      cloudClientRef.current = client;
-      modeRef.current = 'cloud-client';
+      firebaseSessionRef.current = session;
+      modeRef.current = 'firebase';
+      setMyPlayerId(playerId);
+      setJoinCode(targetCode);
+
+      try {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('room', targetCode);
+        window.history.replaceState({}, '', newUrl.toString());
+      } catch (e) {
+        // Safe ignore
+      }
+
+      soundManager.playPointsScored();
+      setSuccessNotice('🚀 Si guul leh ayaad ugu biirtay qolka Firebase!');
+      setTimeout(() => setSuccessNotice(''), 5000);
     } catch (err: any) {
       setIsConnecting(false);
-      setErrorMsg('Khalad ayaa ku yimid ku biirista qolka.');
+      console.error('Join room error', err);
+      setErrorMsg(err.message || 'Khalad ayaa ku yimid ku biirista qolka.');
     }
   };
 
@@ -369,8 +283,8 @@ export default function App() {
     soundManager.playClick();
     if (modeRef.current === 'local') {
       localEngineRef.current?.startGame();
-    } else if (modeRef.current === 'cloud-host') {
-      cloudHostRef.current?.engine.startGame();
+    } else if (modeRef.current === 'firebase') {
+      firebaseSessionRef.current?.startGame();
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'START_GAME' }));
     }
@@ -380,8 +294,8 @@ export default function App() {
     soundManager.playClick();
     if (modeRef.current === 'local') {
       localEngineRef.current?.addBot(count);
-    } else if (modeRef.current === 'cloud-host') {
-      cloudHostRef.current?.engine.addBot(count);
+    } else if (modeRef.current === 'firebase') {
+      firebaseSessionRef.current?.addBot(count);
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'ADD_BOT', count }));
     }
@@ -391,8 +305,8 @@ export default function App() {
     soundManager.playClick();
     if (modeRef.current === 'local') {
       localEngineRef.current?.removePlayer(playerId);
-    } else if (modeRef.current === 'cloud-host') {
-      cloudHostRef.current?.engine.removePlayer(playerId);
+    } else if (modeRef.current === 'firebase') {
+      firebaseSessionRef.current?.removePlayer(playerId);
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'REMOVE_PLAYER', playerId }));
     }
@@ -401,10 +315,8 @@ export default function App() {
   const handleRollDice = () => {
     if (modeRef.current === 'local') {
       localEngineRef.current?.rollDice(myPlayerId);
-    } else if (modeRef.current === 'cloud-host') {
-      cloudHostRef.current?.engine.rollDice(myPlayerId);
-    } else if (modeRef.current === 'cloud-client') {
-      cloudClientRef.current?.sendAction({ type: 'ROLL_DICE' });
+    } else if (modeRef.current === 'firebase') {
+      firebaseSessionRef.current?.rollDice();
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'ROLL_DICE' }));
     }
@@ -414,10 +326,8 @@ export default function App() {
     soundManager.playPointsScored();
     if (modeRef.current === 'local') {
       localEngineRef.current?.submitActions(myPlayerId, allocation);
-    } else if (modeRef.current === 'cloud-host') {
-      cloudHostRef.current?.engine.submitActions(myPlayerId, allocation);
-    } else if (modeRef.current === 'cloud-client') {
-      cloudClientRef.current?.sendAction({ type: 'SUBMIT_ACTIONS', allocation });
+    } else if (modeRef.current === 'firebase') {
+      firebaseSessionRef.current?.submitActions(allocation);
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'SUBMIT_ACTIONS', allocation }));
     }
@@ -427,8 +337,8 @@ export default function App() {
     soundManager.playClick();
     if (modeRef.current === 'local') {
       localEngineRef.current?.restartGame();
-    } else if (modeRef.current === 'cloud-host') {
-      cloudHostRef.current?.engine.restartGame();
+    } else if (modeRef.current === 'firebase') {
+      firebaseSessionRef.current?.restartGame();
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'RESTART_GAME' }));
     }
@@ -437,10 +347,8 @@ export default function App() {
   const handleSendChat = (message: string) => {
     if (modeRef.current === 'local') {
       localEngineRef.current?.sendChat(myPlayerId, message);
-    } else if (modeRef.current === 'cloud-host') {
-      cloudHostRef.current?.engine.sendChat(myPlayerId, message);
-    } else if (modeRef.current === 'cloud-client') {
-      cloudClientRef.current?.sendAction({ type: 'SEND_CHAT', message });
+    } else if (modeRef.current === 'firebase') {
+      firebaseSessionRef.current?.sendChat(message);
     } else if (modeRef.current === 'ws') {
       wsRef.current?.send(JSON.stringify({ type: 'SEND_CHAT', message }));
     }
