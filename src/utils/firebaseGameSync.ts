@@ -75,7 +75,7 @@ export class FirebaseRoomSync {
           pendingPoints: data.pendingPoints || 0,
           turnStartTime: data.updatedAt || Date.now(),
           settings: {
-            maxScoreCap: 10,
+            maxScoreCap: 30,
             maxPlayers: data.maxPlayers || 20,
             turnTimeLimit: 45,
           },
@@ -457,12 +457,12 @@ export class FirebaseRoomSync {
 
     // 5. Self points
     if (selfPoints > 0) {
-      pCurrent.score = Math.min(10, pCurrent.score + selfPoints);
+      pCurrent.score = Math.min(30, pCurrent.score + selfPoints);
       logs.push({
         id: `log-${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        textSo: `⭐ ${player.name} wuxuu helay +${selfPoints} dhibcood! (${pCurrent.score}/10)`,
-        textEn: `⭐ ${player.name} +${selfPoints} pts! (${pCurrent.score}/10)`,
+        textSo: `⭐ ${player.name} wuxuu helay +${selfPoints} dhibcood! (${pCurrent.score}/30)`,
+        textEn: `⭐ ${player.name} +${selfPoints} pts! (${pCurrent.score}/30)`,
         type: 'point',
       });
     }
@@ -628,9 +628,9 @@ export class FirebaseRoomSync {
       }
     }
 
-    // 3. Keep remaining for self (max 10)
-    const neededTo10 = Math.max(0, 10 - bot.score);
-    allocation.selfPoints = Math.min(remaining, neededTo10);
+    // 3. Keep remaining for self (max 30)
+    const neededTo30 = Math.max(0, 30 - bot.score);
+    allocation.selfPoints = Math.min(remaining, neededTo30);
 
     return allocation;
   }

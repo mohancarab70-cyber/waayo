@@ -92,7 +92,7 @@ export class LocalGameEngine {
       pendingPoints: 0,
       turnStartTime: Date.now(),
       settings: {
-        maxScoreCap: 10,
+        maxScoreCap: 30,
         maxPlayers,
         turnTimeLimit: 45,
       },
@@ -315,8 +315,8 @@ export class LocalGameEngine {
       throw new Error(`Kama badsan kartid ${maxPointsAllowed} dhibcood oo aad keentay.`);
     }
 
-    if (player.score + selfPoints > 10) {
-      throw new Error('Dhibcahaaga kama badnaan karaan 10 dhibcood (Max score is 10).');
+    if (player.score + selfPoints > 30) {
+      throw new Error('Dhibcahaaga kama badnaan karaan 30 dhibcood (Max score is 30).');
     }
 
     // 1. Deductions
@@ -405,10 +405,10 @@ export class LocalGameEngine {
 
     // 5. Self points
     if (selfPoints > 0) {
-      player.score = Math.min(10, player.score + selfPoints);
+      player.score = Math.min(30, player.score + selfPoints);
       this.addLog(
-        `⭐ ${player.name} wuxuu helay +${selfPoints} dhibcood! (Wadar: ${player.score}/10)`,
-        `⭐ ${player.name} added +${selfPoints} points to self! (Total: ${player.score}/10)`,
+        `⭐ ${player.name} wuxuu helay +${selfPoints} dhibcood! (Wadar: ${player.score}/30)`,
+        `⭐ ${player.name} added +${selfPoints} points to self! (Total: ${player.score}/30)`,
         'point'
       );
     }
@@ -562,8 +562,8 @@ export class LocalGameEngine {
       }
     }
 
-    // 3. Put remaining points into self points up to max 10
-    const roomForSelf = Math.max(0, 10 - ai.score);
+    // 3. Put remaining points into self points up to max 30
+    const roomForSelf = Math.max(0, 30 - ai.score);
     selfPoints = Math.min(roomForSelf, remaining);
     remaining -= selfPoints;
 

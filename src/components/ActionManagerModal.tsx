@@ -17,8 +17,8 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
   players,
   onSubmit,
 }) => {
-  // Max self points possible (cap is 10)
-  const maxSelfPossible = Math.min(10 - currentPlayer.score, availablePoints);
+  // Max self points possible (cap is 30)
+  const maxSelfPossible = Math.min(30 - currentPlayer.score, availablePoints);
   const [selfPoints, setSelfPoints] = useState<number>(0);
 
   // Deductions from free players with score > 0 (targetId -> amount)
@@ -293,14 +293,14 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                 <div className="font-bold text-sm text-stone-100 flex items-center gap-1.5">
                   <span>Dhibcahaaga (Adiga)</span>
                   <span className="text-[10px] text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded font-mono border border-amber-800">
-                    Max: 10
+                    Max: 30
                   </span>
                 </div>
                 <div className="text-xs text-stone-400 mt-0.5">
-                  Hadda: <strong className="text-stone-200 font-mono">{currentPlayer.score}/10</strong>
+                  Hadda: <strong className="text-stone-200 font-mono">{currentPlayer.score}/30</strong>
                   {selfPoints > 0 && (
                     <span className="text-emerald-400 font-bold ml-1.5 font-mono">
-                      ➔ {currentPlayer.score + selfPoints}/10 (+{selfPoints})
+                      ➔ {currentPlayer.score + selfPoints}/30 (+{selfPoints})
                     </span>
                   )}
                 </div>
@@ -387,7 +387,7 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                             </span>
                           ) : (
                             <span>
-                              Dhibcaha hadda: <strong className="text-amber-300">{opp.score}/10</strong>
+                              Dhibcaha hadda: <strong className="text-amber-300">{opp.score}/30</strong>
                               {deductAmt > 0 && (
                                 <span className="text-red-400 font-bold ml-1">
                                   (-{deductAmt} ➔ {effectiveScore} pts)

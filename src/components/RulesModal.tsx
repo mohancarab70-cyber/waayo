@@ -31,11 +31,11 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
           <div className="bg-stone-950 p-3.5 rounded-xl border border-stone-800">
             <h3 className="font-bold text-amber-400 text-sm mb-1 flex items-center gap-2">
               <span>⭐</span>
-              <span>1. Xaddidaadda Dhibcaha (Ugu Badnaan 10 Dhibcood)</span>
+              <span>1. Xaddidaadda Dhibcaha (Ugu Badnaan 30 Dhibcood)</span>
             </h3>
             <ul className="list-disc list-inside space-y-1 text-xs text-stone-300">
               <li>
-                Qofku <strong>10 dhibcood ka badan</strong> ma yeelan karo ciyaarta oo dhan!
+                Qofku <strong>30 dhibcood ka badan</strong> ma yeelan karo ciyaarta oo dhan (heerka ugu sarreeya ee dhibcaha qofku leeyahay waa 30 dhibcood)!
               </li>
               <li>
                 <strong className="text-amber-300">Lambar 5:</strong> Waxaad helaysaa 5 dhibcood oo aad maamulan karto.

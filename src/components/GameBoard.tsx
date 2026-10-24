@@ -163,7 +163,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   <div className="flex items-center justify-between text-[10px] pt-0.5 border-t border-stone-800/60">
                     <span className="text-stone-400">Dhibco:</span>
                     <span className="font-mono font-bold text-amber-400 tabular-nums">
-                      {opp.score}/10
+                      {opp.score}/30
                     </span>
                   </div>
                 </div>
@@ -243,7 +243,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               <div className="text-right">
                 <div className="text-[10px] text-stone-400 font-medium">Dhibcahaaga</div>
                 <div className="text-xl font-extrabold font-mono text-amber-400 tabular-nums">
-                  {you?.score || 0} <span className="text-xs text-stone-500 font-normal">/ 10 max</span>
+                  {you?.score || 0} <span className="text-xs text-stone-500 font-normal">/ 30 max</span>
                 </div>
               </div>
             </div>
@@ -269,7 +269,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
             <MatchstickCounter
               score={you?.score || 0}
-              targetScore={10}
+              targetScore={30}
               color={you?.color}
             />
           </div>

@@ -396,15 +396,6 @@ export default function App() {
             {/* Right: Sleek quick actions */}
             <div className="flex items-center gap-2 sm:gap-3">
               <button
-                onClick={() => setShowVercelModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-stone-950/75 hover:bg-stone-900 border border-white/15 text-stone-300 text-xs font-semibold backdrop-blur-md transition-all shadow-md flex items-center gap-1.5"
-                title="Xogta Vercel & Shabakadda"
-              >
-                <span>▲</span>
-                <span className="hidden md:inline">Server Info</span>
-              </button>
-
-              <button
                 onClick={() => setShowRules(true)}
                 className="px-3 py-1.5 rounded-xl bg-stone-950/75 hover:bg-stone-900 border border-white/15 text-stone-200 text-xs font-semibold backdrop-blur-md transition-all shadow-md flex items-center gap-1.5"
                 title="Shuruucda Ciyaarta"

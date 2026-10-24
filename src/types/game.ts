@@ -5,7 +5,7 @@ export interface Player {
   name: string;
   avatar: string;
   color: string;
-  score: number; // Max 10 points
+  score: number; // Max 30 points
   isLocked: boolean;
   lockPoints: number; // 0 if not locked, 1-5 when locked
   isHost: boolean;
@@ -24,7 +24,7 @@ export interface GameLog {
 }
 
 export interface RoomSettings {
-  maxScoreCap: number; // strictly 10 points max per player
+  maxScoreCap: number; // 30 points max per player
   maxPlayers: number; // 2 - 6
   turnTimeLimit: number; // seconds
 }
