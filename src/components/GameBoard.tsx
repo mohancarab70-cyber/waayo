@@ -124,7 +124,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div
           className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-25"
           style={{
-            backgroundImage: `url('/assets/aistudio/Gemini_Generated_Image_at8xcdat8xcdat8x_c8c14675.jpg')`,
+            backgroundImage: `url('/assets/aistudio/banner_789cc07a.png')`,
             backgroundColor: '#0F2B1D',
           }}
         />

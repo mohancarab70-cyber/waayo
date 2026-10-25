@@ -374,9 +374,9 @@ export default function App() {
       {/* Top Header with authentic Somali game artwork banner and minimal controls */}
       <header className="relative w-full border-b border-stone-800/90 bg-stone-950 shadow-2xl overflow-hidden sticky top-0 z-40">
         {/* Banner image embedded in header */}
-        <div className="relative w-full h-24 sm:h-32 md:h-36 overflow-hidden">
+        <div className="relative w-full h-28 sm:h-36 md:h-44 overflow-hidden">
           <img
-            src="/assets/aistudio/Gemini_Generated_Image_at8xcdat8xcdat8x_c8c14675.jpg"
+            src="/assets/aistudio/banner_789cc07a.png"
             alt="Taraq Somali Board Game Banner"
             className="w-full h-full object-cover object-center select-none"
           />
