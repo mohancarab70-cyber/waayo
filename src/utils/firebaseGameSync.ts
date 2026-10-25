@@ -13,6 +13,7 @@ import type {
   DiceValue,
   PointAllocation,
   GameLog,
+  ReactionEvent,
 } from '../types/game.js';
 import {
   PLAYER_COLORS,
@@ -82,6 +83,7 @@ export class FirebaseRoomSync {
           logs: data.logs || [],
           winnerId: data.winnerId || null,
           roundNumber: data.roundNumber || 1,
+          lastReaction: data.lastReaction || null,
         };
 
         const prevRoom = this.currentRoom;
@@ -136,6 +138,7 @@ export class FirebaseRoomSync {
       pendingPoints: updatedRoom.pendingPoints,
       winnerId: updatedRoom.winnerId,
       roundNumber: updatedRoom.roundNumber || 1,
+      lastReaction: updatedRoom.lastReaction || null,
       logs: updatedRoom.logs.slice(-50), // keep last 50 logs
       updatedAt: Date.now(),
       createdAt: updatedRoom.turnStartTime || Date.now(),
@@ -726,12 +729,23 @@ export class FirebaseRoomSync {
 
   public async sendChat(message: string) {
     if (!this.currentRoom) return;
-    const clean = message.trim();
+    const clean = message.trim().slice(0, 120);
     if (!clean) return;
 
     const sender = this.currentRoom.players.find((p) => p.id === this.myPlayerId);
+    const reaction: ReactionEvent = {
+      id: `react-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      senderId: this.myPlayerId,
+      senderName: sender ? sender.name : 'Player',
+      senderAvatar: sender ? sender.avatar : '🎲',
+      senderColor: sender ? sender.color : '#F59E0B',
+      text: clean,
+      timestamp: Date.now(),
+    };
+
     const updatedRoom: RoomState = {
       ...this.currentRoom,
+      lastReaction: reaction,
       logs: [
         ...this.currentRoom.logs,
         {

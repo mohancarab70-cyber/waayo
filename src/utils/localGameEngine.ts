@@ -1,4 +1,4 @@
-import type { RoomState, Player, DiceValue, PointAllocation, GameLog } from '../types/game.js';
+import type { RoomState, Player, DiceValue, PointAllocation, GameLog, ReactionEvent } from '../types/game.js';
 
 export const PLAYER_COLORS = [
   '#DC2626', // Red
@@ -99,6 +99,7 @@ export class LocalGameEngine {
       logs: [],
       winnerId: null,
       roundNumber: 1,
+      lastReaction: null,
     };
 
     this.addLog(
@@ -656,12 +657,23 @@ export class LocalGameEngine {
     const trimmed = message.trim().slice(0, 120);
     if (!trimmed) return;
 
+    const reaction: ReactionEvent = {
+      id: `react-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      senderId,
+      senderName: sender.name,
+      senderAvatar: sender.avatar,
+      senderColor: sender.color,
+      text: trimmed,
+      timestamp: Date.now(),
+    };
+    this.room.lastReaction = reaction;
+
     this.addLog(
       `💬 ${sender.name}: "${trimmed}"`,
       `💬 ${sender.name}: "${trimmed}"`,
       'chat'
     );
-    this.notify();
+    this.notify({ type: 'REACTION', reaction });
   }
 
   public destroy() {

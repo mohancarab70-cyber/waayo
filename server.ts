@@ -3,7 +3,7 @@ import http from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { RoomState, Player, DiceValue, PointAllocation, GameLog } from './src/types/game.js';
+import type { RoomState, Player, DiceValue, PointAllocation, GameLog, ReactionEvent } from './src/types/game.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -464,6 +464,7 @@ wss.on('connection', (ws: WebSocket) => {
             logs: [],
             winnerId: null,
             roundNumber: 1,
+            lastReaction: null,
           };
 
           addLog(
@@ -794,8 +795,19 @@ wss.on('connection', (ws: WebSocket) => {
           const cleanText = (msg.message || '').trim().slice(0, 100);
           if (!cleanText) return;
 
+          const reaction: ReactionEvent = {
+            id: `react-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            senderId: meta.playerId,
+            senderName: author,
+            senderAvatar: player ? player.avatar : '🎲',
+            senderColor: player ? player.color : '#F59E0B',
+            text: cleanText,
+            timestamp: Date.now(),
+          };
+          room.lastReaction = reaction;
+
           addLog(room, `💬 ${author}: ${cleanText}`, `💬 ${author}: ${cleanText}`, 'chat');
-          broadcastRoom(room.id);
+          broadcastRoom(room.id, { type: 'REACTION', reaction });
           break;
         }
 

@@ -43,6 +43,17 @@ export interface RoomState {
   logs: GameLog[];
   winnerId: string | null;
   roundNumber: number;
+  lastReaction?: ReactionEvent | null;
+}
+
+export interface ReactionEvent {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string;
+  senderColor: string;
+  text: string;
+  timestamp: number;
 }
 
 export interface PointAllocation {

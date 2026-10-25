@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import type { RoomState, Player, PointAllocation } from '../types/game.js';
+import React, { useState, useEffect, useRef } from 'react';
+import type { RoomState, Player, PointAllocation, ReactionEvent } from '../types/game.js';
 import { Dice3D } from './Dice3D.js';
 import { MatchstickCounter } from './MatchstickCounter.js';
 import { ActionManagerModal } from './ActionManagerModal.js';
+import { soundManager } from '../utils/audio.js';
 
 interface GameBoardProps {
   room: RoomState;
@@ -14,11 +15,14 @@ interface GameBoardProps {
 }
 
 const QUICK_REACTIONS = [
-  { text: 'Well played! 🎉', label: 'Well played' },
-  { text: 'Locked you in jail! 🔒', label: 'Locked you' },
-  { text: 'Free me from jail! 🗝️', label: 'Free me' },
-  { text: 'Spare my points! 😅', label: 'Spare me' },
-  { text: 'Victory is near! 👑', label: 'Victory' },
+  { text: 'Well played! 🎉', label: 'Well played 🎉' },
+  { text: 'Locked you in jail! 🔒', label: 'Locked you 🔒' },
+  { text: 'Free me from jail! 🗝️', label: 'Free me 🗝️' },
+  { text: 'Spare my points! 😅', label: 'Spare me 😅' },
+  { text: 'Victory is near! 👑', label: 'Victory 👑' },
+  { text: 'Nice roll! 🎲', label: 'Nice roll 🎲' },
+  { text: 'Watch out! ⚔️', label: 'Watch out ⚔️' },
+  { text: 'Taraq! 🔥', label: 'Taraq! 🔥' },
 ];
 
 export const GameBoard: React.FC<GameBoardProps> = ({
@@ -31,6 +35,69 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 }) => {
   const [showLogs, setShowLogs] = useState(false);
   const [isDiceAnimating, setIsDiceAnimating] = useState(false);
+  const [visibleReactions, setVisibleReactions] = useState<ReactionEvent[]>([]);
+  const [justSentReaction, setJustSentReaction] = useState<string | null>(null);
+  const lastReactionIdRef = useRef<string | null>(null);
+  const lastChatLogIdRef = useRef<string | null>(null);
+
+  // Sync incoming reaction events from room.lastReaction (Firebase / Local / WS)
+  useEffect(() => {
+    if (room.lastReaction && room.lastReaction.id !== lastReactionIdRef.current) {
+      lastReactionIdRef.current = room.lastReaction.id;
+      const newReact = room.lastReaction;
+      soundManager.playReactionPop();
+      setVisibleReactions((prev) => {
+        const filtered = prev.filter((r) => r.id !== newReact.id);
+        return [...filtered.slice(-2), newReact];
+      });
+
+      const timer = setTimeout(() => {
+        setVisibleReactions((prev) => prev.filter((r) => r.id !== newReact.id));
+      }, 4200);
+
+      return () => clearTimeout(timer);
+    }
+  }, [room.lastReaction]);
+
+  // Robust observer: scan incoming chat logs as well to ensure 100% reaction visibility
+  useEffect(() => {
+    if (!room.logs || room.logs.length === 0) return;
+    const latest = room.logs[0];
+    if (latest.type === 'chat' && latest.id !== lastChatLogIdRef.current) {
+      lastChatLogIdRef.current = latest.id;
+      if (!room.lastReaction || room.lastReaction.id !== latest.id) {
+        const textRaw = latest.textEn || latest.textSo;
+        const match = textRaw.match(/💬\s*(.*?):\s*"?([^"]*)"?/);
+        const senderName = match ? match[1].trim() : 'Player';
+        const msgText = match ? match[2].trim() : textRaw.replace(/^💬\s*/, '');
+        const player = room.players.find(
+          (p) => p.name.toLowerCase() === senderName.toLowerCase()
+        );
+
+        const syntheticReact: ReactionEvent = {
+          id: latest.id,
+          senderId: player?.id || 'unknown',
+          senderName: player?.name || senderName,
+          senderAvatar: player?.avatar || '💬',
+          senderColor: player?.color || '#F59E0B',
+          text: msgText,
+          timestamp: latest.timestamp,
+        };
+
+        soundManager.playReactionPop();
+        setVisibleReactions((prev) => {
+          const filtered = prev.filter((r) => r.id !== syntheticReact.id);
+          return [...filtered.slice(-2), syntheticReact];
+        });
+
+        const timer = setTimeout(() => {
+          setVisibleReactions((prev) => prev.filter((r) => r.id !== syntheticReact.id));
+        }, 4200);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [room.logs]);
 
   const currentPlayer = room.players[room.currentTurnIndex] || room.players[0];
   const isMyTurn = currentPlayer && currentPlayer.id === currentPlayerId;
@@ -47,6 +114,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     setTimeout(() => {
       setIsDiceAnimating(false);
     }, 1200);
+  };
+
+  const handleSendReaction = (text: string) => {
+    soundManager.playClick();
+    setJustSentReaction(text);
+    setTimeout(() => setJustSentReaction(null), 1000);
+    onSendChat(text);
   };
 
   return (
@@ -144,10 +218,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-[210px] overflow-y-auto pr-1">
             {opponents.map((opp) => {
               const isTurn = opp.id === currentPlayer?.id;
+              const oppReaction = visibleReactions.find((r) => r.senderId === opp.id);
               return (
                 <div
                   key={opp.id}
-                  className={`flex flex-col gap-1 p-2 rounded-xl border transition-all ${
+                  className={`relative flex flex-col gap-1 p-2 rounded-xl border transition-all ${
                     opp.isLocked
                       ? 'bg-red-950/40 border-red-900/80'
                       : isTurn
@@ -155,6 +230,14 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                       : 'bg-stone-900/80 border-stone-800'
                   }`}
                 >
+                  {/* Floating speech bubble above opponent card if they reacted */}
+                  {oppReaction && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 text-[10px] font-black shadow-lg animate-bounce whitespace-nowrap flex items-center gap-1 border border-amber-300">
+                      <span>💬</span>
+                      <span className="truncate max-w-[110px]">{oppReaction.text}</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between gap-1">
                     <div className="flex items-center gap-1.5 overflow-hidden">
                       <span className="text-base shrink-0">{opp.avatar}</span>
@@ -192,6 +275,43 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             })}
           </div>
         </div>
+
+        {/* On-Screen Live Floating Reactions Feed (Visible to all players on screen) */}
+        {visibleReactions.length > 0 && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 pointer-events-none flex flex-col items-center gap-2.5 w-full max-w-sm px-4">
+            {visibleReactions.map((react) => (
+              <div
+                key={react.id}
+                className="animate-reaction-pop w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-stone-950/95 border-2 shadow-[0_12px_40px_rgba(0,0,0,0.85)] backdrop-blur-md"
+                style={{
+                  borderColor: react.senderColor || '#F59E0B',
+                  boxShadow: `0 8px 30px ${react.senderColor || '#F59E0B'}45`,
+                }}
+              >
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-inner"
+                  style={{ backgroundColor: `${react.senderColor || '#F59E0B'}25` }}
+                >
+                  {react.senderAvatar}
+                </div>
+                <div className="flex flex-col text-left overflow-hidden min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="text-[11px] font-black truncate"
+                      style={{ color: react.senderColor || '#F59E0B' }}
+                    >
+                      {react.senderName}
+                    </span>
+                    <span className="text-[10px] text-stone-400 font-medium">💬 Reaction:</span>
+                  </div>
+                  <span className="text-sm font-extrabold text-white tracking-wide truncate">
+                    {react.text}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Center Table: 3D Dice */}
         <div className="relative z-10 flex flex-col items-center justify-center my-6">
@@ -236,11 +356,21 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
         {/* Bottom Station: Your Player Info */}
         <div className="relative z-10 p-4 bg-gradient-to-t from-stone-950 via-stone-900/90 to-transparent">
-          <div
-            className={`max-w-md mx-auto p-3.5 rounded-2xl bg-stone-900/95 border-2 shadow-xl flex flex-col gap-2 ${
-              you?.isLocked ? 'border-red-600/80 bg-red-950/20' : 'border-amber-600/60'
-            }`}
-          >
+          {(() => {
+            const yourReaction = visibleReactions.find((r) => r.senderId === you?.id);
+            return (
+              <div
+                className={`relative max-w-md mx-auto p-3.5 rounded-2xl bg-stone-900/95 border-2 shadow-xl flex flex-col gap-2 ${
+                  you?.isLocked ? 'border-red-600/80 bg-red-950/20' : 'border-amber-600/60'
+                }`}
+              >
+                {/* Floating speech bubble above your card if you reacted */}
+                {yourReaction && (
+                  <div className="absolute -top-3.5 left-6 z-30 px-2.5 py-1 rounded-full bg-amber-400 text-stone-950 text-xs font-black shadow-lg animate-bounce whitespace-nowrap flex items-center gap-1 border border-amber-300">
+                    <span>💬</span>
+                    <span>{yourReaction.text}</span>
+                  </div>
+                )}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div
@@ -297,21 +427,32 @@ export const GameBoard: React.FC<GameBoardProps> = ({
               color={you?.color}
             />
           </div>
+            );
+          })()}
         </div>
       </div>
 
       {/* Quick Reactions Bar */}
-      <div className="flex flex-wrap items-center justify-center gap-2 bg-stone-900/80 border border-stone-800 p-2.5 rounded-2xl">
-        <span className="text-xs text-stone-400 font-medium mr-1">Reactions:</span>
-        {QUICK_REACTIONS.map((react, i) => (
-          <button
-            key={i}
-            onClick={() => onSendChat(react.text)}
-            className="text-xs px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 font-medium transition-colors border border-stone-700/60 active:scale-95"
-          >
-            {react.label}
-          </button>
-        ))}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-stone-900/90 border border-stone-800 p-3 rounded-2xl shadow-lg">
+        <div className="flex items-center gap-2 text-xs font-bold text-amber-400 shrink-0">
+          <span className="text-base animate-pulse">💬</span>
+          <span>Live Reactions:</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-1.5 w-full sm:w-auto">
+          {QUICK_REACTIONS.map((react, i) => (
+            <button
+              key={i}
+              onClick={() => handleSendReaction(react.text)}
+              className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all border active:scale-90 shadow-sm flex items-center gap-1.5 cursor-pointer ${
+                justSentReaction === react.text
+                  ? 'bg-amber-400 text-stone-950 border-amber-300 scale-105 shadow-amber-400/40'
+                  : 'bg-stone-800 hover:bg-stone-700 hover:border-amber-500/50 text-stone-200 border-stone-700/70'
+              }`}
+            >
+              <span>{react.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Collapsible Logs Drawer */}
