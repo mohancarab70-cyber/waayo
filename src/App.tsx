@@ -13,8 +13,8 @@ import {
 } from './utils/firebaseGameSync.js';
 
 const AVATARS = [
-  { id: 'nin', emoji: '👨', label: 'Nin (Man)' },
-  { id: 'naag', emoji: '👩', label: 'Naag (Woman)' },
+  { id: 'nin', emoji: '👨', label: 'Male' },
+  { id: 'naag', emoji: '👩', label: 'Female' },
   { id: 'dice', emoji: '🎲', label: 'Dice' },
 ];
 
@@ -48,7 +48,7 @@ export default function App() {
     if (savedName) {
       setPlayerName(savedName);
     } else {
-      setPlayerName(`Ciyaaryahan ${Math.floor(10 + Math.random() * 90)}`);
+      setPlayerName(`Player ${Math.floor(10 + Math.random() * 90)}`);
     }
 
     const savedAvatar = localStorage.getItem('taraq_avatar');
@@ -134,11 +134,11 @@ export default function App() {
       // Start the game right away
       engine.startGame();
       soundManager.playClick();
-      setSuccessNotice('🎮 Ciyaartii waa bilaabatay! Waxaad la dheeleysaa Bots (Vercel Ready).');
+      setSuccessNotice('🎮 Match started vs Bots!');
       setTimeout(() => setSuccessNotice(''), 4000);
     } catch (err: any) {
       console.error('Local bot game error', err);
-      setErrorMsg('Khalad ayaa dhacay markii la bilaabayay ciyaarta bot-ka.');
+      setErrorMsg('Failed to start local bot match.');
     } finally {
       setIsConnecting(false);
     }
@@ -186,8 +186,8 @@ export default function App() {
       }
 
       setIsConnecting(false);
-      setSuccessNotice(`🎉 Qolka waa la furay (Firebase Online)! Koobiyeey link-ga sare ama u dir WhatsApp si ay toos kuugu soo galaan.`);
-      setTimeout(() => setSuccessNotice(''), 7000);
+      setSuccessNotice(`🎉 Room created! Copy the invite link to invite friends.`);
+      setTimeout(() => setSuccessNotice(''), 6000);
     } catch (err: any) {
       console.error('Failed to create Firebase room', err);
       // Pure local bot fallback
@@ -201,7 +201,7 @@ export default function App() {
       });
       setRoom(engine.getRoom());
       setIsConnecting(false);
-      setErrorMsg('Laguma guuleysan in qolka internet-ka laga furo. Ciyaartu waxey ku furantay qaab Local/Bot ah.');
+      setErrorMsg('Could not reach online server. Switched to offline Bot mode.');
     }
   };
 
@@ -229,7 +229,7 @@ export default function App() {
     }
     const targetCode = rawInput.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!targetCode) {
-      setErrorMsg('Fadlan ku dhaji link-ga casuumaadda ama furiha qolka');
+      setErrorMsg('Please enter or paste an invite link or room code.');
       return;
     }
 
@@ -240,7 +240,7 @@ export default function App() {
     try {
       const { session, playerId } = await joinFirestoreRoom(
         targetCode,
-        playerName.trim() || 'Ciyaaryahan',
+        playerName.trim() || 'Player',
         selectedAvatar,
         {
           onUpdate: (updatedRoom, event) => {
@@ -269,12 +269,12 @@ export default function App() {
       }
 
       soundManager.playPointsScored();
-      setSuccessNotice('🚀 Si guul leh ayaad ugu biirtay qolka Firebase!');
-      setTimeout(() => setSuccessNotice(''), 5000);
+      setSuccessNotice('🚀 Joined room successfully!');
+      setTimeout(() => setSuccessNotice(''), 4000);
     } catch (err: any) {
       setIsConnecting(false);
       console.error('Join room error', err);
-      setErrorMsg(err.message || 'Khalad ayaa ku yimid ku biirista qolka.');
+      setErrorMsg(err.message || 'Failed to join room. Please check the code.');
     }
   };
 
@@ -396,18 +396,9 @@ export default function App() {
             {/* Right: Sleek quick actions */}
             <div className="flex items-center gap-2 sm:gap-3">
               <button
-                onClick={() => setShowRules(true)}
-                className="px-3 py-1.5 rounded-xl bg-stone-950/75 hover:bg-stone-900 border border-white/15 text-stone-200 text-xs font-semibold backdrop-blur-md transition-all shadow-md flex items-center gap-1.5"
-                title="Shuruucda Ciyaarta"
-              >
-                <span>📖</span>
-                <span className="hidden sm:inline">Shuruucda</span>
-              </button>
-
-              <button
                 onClick={toggleSound}
                 className="px-3 py-1.5 rounded-xl bg-stone-950/75 hover:bg-stone-900 border border-white/15 text-stone-200 text-xs font-semibold backdrop-blur-md transition-all shadow-md flex items-center gap-1.5"
-                title={isSoundMuted ? 'Shid Codka' : 'Dami Codka'}
+                title={isSoundMuted ? 'Unmute Sound' : 'Mute Sound'}
               >
                 <span>{isSoundMuted ? '🔇' : '🔊'}</span>
               </button>
@@ -418,16 +409,16 @@ export default function App() {
                   className="px-3.5 py-1.5 text-xs font-bold text-red-200 bg-red-950/80 hover:bg-red-900 border border-red-700/60 rounded-xl backdrop-blur-md transition-all shadow-md flex items-center gap-1.5"
                 >
                   <span>🚪</span>
-                  <span>Ka Bax</span>
+                  <span>Leave</span>
                 </button>
               ) : (
                 <button
                   onClick={handleStartLocalBotGame}
                   className="px-3 py-1.5 rounded-xl bg-amber-600/90 hover:bg-amber-500 border border-amber-400/30 text-white text-xs font-bold backdrop-blur-md transition-all shadow-md flex items-center gap-1.5"
-                  title="Toos ugu ciyaar Bots (Vercel Ready)"
+                  title="Play vs Bots Offline"
                 >
                   <span>🤖</span>
-                  <span className="hidden sm:inline">Ciyaar Bot</span>
+                  <span className="hidden sm:inline">Play Bots</span>
                 </button>
               )}
             </div>
@@ -468,46 +459,46 @@ export default function App() {
                       </div>
                       <div>
                         <div className="text-xs uppercase font-extrabold text-emerald-400 tracking-wider">
-                          Casuumaad Toos ah (Room Invitation)
+                          Room Invitation
                         </div>
                         <h2 className="text-base sm:text-xl font-black text-white mt-0.5">
-                          Waxaa lagugu soo casuumay ciyaarta Taraq!
+                          You&apos;ve been invited to Taraq!
                         </h2>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 bg-stone-950 px-4 py-2 rounded-2xl border border-amber-500/40 self-start sm:self-auto shadow-inner">
-                      <span className="text-xs text-stone-400">Qolka:</span>
+                      <span className="text-xs text-stone-400">Room:</span>
                       <span className="font-mono font-black text-amber-400 text-lg tracking-widest">{invitedRoomCode}</span>
                     </div>
                   </div>
 
                   <p className="text-xs text-stone-300">
-                    Qor magacaaga hoos, dooro astaantaada (avatar), kadibna riix badhanka cagaaran si aad toos ugu biirto qolka!
+                    Enter your name, choose an avatar, and join the match.
                   </p>
 
                   {/* Profile Setup */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <label className="text-xs text-stone-200 block mb-1.5 font-bold">
-                        Qor Magacaaga:
+                        Player Name:
                       </label>
                       <input
                         type="text"
                         value={playerName}
                         onChange={(e) => savePlayerName(e.target.value)}
-                        placeholder="Tusaale: Axmed, Sahra, Guuleed..."
+                        placeholder="e.g. Alex, Maya, Sam..."
                         className="w-full bg-stone-950 border border-stone-700/80 rounded-xl px-4 py-3 text-sm text-stone-100 font-semibold focus:outline-none focus:border-emerald-500 shadow-inner"
                         maxLength={18}
                       />
                       <p className="text-[11px] text-stone-400 mt-1">
-                        Magacan ayaa ka muuqan doona miiska ciyaarta.
+                        Visible to other players on the game board.
                       </p>
                     </div>
 
                     <div>
                       <label className="text-xs text-stone-200 block mb-1.5 font-bold">
-                        Dooro Astaantaada (Avatar):
+                        Choose Avatar:
                       </label>
                       <div className="grid grid-cols-3 gap-2">
                         {AVATARS.map((av) => (
@@ -538,7 +529,7 @@ export default function App() {
                       className="w-full sm:flex-1 py-4 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-stone-950 font-black rounded-2xl shadow-xl shadow-emerald-950/70 transition-all text-base flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                     >
                       <span>🚀</span>
-                      <span>{isConnecting ? 'Waa lagu xirayaa qolka...' : 'Toos Ugu Biir Qolka (Gal Ciyaarta)'}</span>
+                      <span>{isConnecting ? 'Joining room...' : 'Join Game'}</span>
                     </button>
 
                     <button
@@ -551,7 +542,7 @@ export default function App() {
                       }}
                       className="text-xs text-stone-400 hover:text-stone-200 underline py-2 px-3 whitespace-nowrap"
                     >
-                      ✕ Ka noqo / Abuur qol cusub
+                      ✕ Cancel / Create new room
                     </button>
                   </div>
                 </div>
@@ -564,10 +555,10 @@ export default function App() {
                       <div>
                         <h2 className="text-base sm:text-lg font-bold text-stone-100 flex items-center gap-2">
                           <span>👤</span>
-                          <span>Magacaaga & Sawirkaaga (Your Profile)</span>
+                          <span>Player Profile</span>
                         </h2>
                         <p className="text-xs text-stone-400 mt-0.5">
-                          Magaca aad halkan ku qorato waxaa toos u arki doona dhammaan asxaabta kula dheeleysa!
+                          Set your display name and avatar for the game.
                         </p>
                       </div>
 
@@ -575,7 +566,7 @@ export default function App() {
                       <div className="flex items-center gap-2 bg-stone-950 px-3.5 py-1.5 rounded-xl border border-amber-500/40 self-start sm:self-auto shadow-inner">
                         <span className="text-xl">{selectedAvatar}</span>
                         <span className="font-bold text-sm text-amber-400 truncate max-w-[140px]">
-                          {playerName.trim() || 'Magac la\'aan'}
+                          {playerName.trim() || 'Anonymous'}
                         </span>
                       </div>
                     </div>
@@ -583,24 +574,24 @@ export default function App() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
                         <label className="text-xs text-stone-300 block mb-1.5 font-bold">
-                          Qor Magacaaga:
+                          Player Name:
                         </label>
                         <input
                           type="text"
                           value={playerName}
                           onChange={(e) => savePlayerName(e.target.value)}
-                          placeholder="Tusaale: Baxaroos, Axmed, Sahra..."
+                          placeholder="e.g. Player, Alex, Maya..."
                           className="w-full bg-stone-950 border border-stone-700/80 rounded-xl px-4 py-3 text-sm text-stone-100 font-semibold focus:outline-none focus:border-amber-500 shadow-inner"
                           maxLength={18}
                         />
                         <p className="text-[11px] text-stone-500 mt-1">
-                          Magacan ayaa ka muuqan doona miiska ciyaarta iyo dhibcahaaga.
+                          Displayed on the board and scoreboard.
                         </p>
                       </div>
 
                       <div>
                         <label className="text-xs text-stone-300 block mb-1.5 font-bold">
-                          Dooro Astaantaada (Avatar):
+                          Choose Avatar:
                         </label>
                         <div className="grid grid-cols-3 gap-2">
                           {AVATARS.map((av) => (
@@ -632,14 +623,14 @@ export default function App() {
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="text-sm sm:text-base font-bold text-amber-300">
-                            Ku Ciyaar Bots (Offline & Vercel Ready)
+                            Play Offline vs Bots
                           </h3>
                           <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-600 text-emerald-300 text-[10px] font-bold">
-                            Degdeg ah ⚡
+                            Instant ⚡
                           </span>
                         </div>
                         <p className="text-xs text-stone-400 mt-0.5">
-                          Toos ugu ciyaar browser-kaaga adigoon u baahnayn network ama server.
+                          Practice and play directly in browser with AI opponents.
                         </p>
                       </div>
                     </div>
@@ -650,7 +641,7 @@ export default function App() {
                       className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold rounded-xl text-xs shadow-md shadow-amber-950/50 transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
                     >
                       <span>▶️</span>
-                      <span>Bilaab Hadda (Play with Bots)</span>
+                      <span>Play Bots</span>
                     </button>
                   </div>
 
@@ -665,11 +656,11 @@ export default function App() {
                             🎲
                           </span>
                           <h3 className="text-base sm:text-lg font-bold text-stone-100">
-                            Abuur Qol (Create Room)
+                            Create Room
                           </h3>
                         </div>
                         <p className="text-xs text-stone-400 leading-relaxed">
-                          Fur qol cusub online ah. Markiiba waxaad helaysaa <strong className="text-amber-400">Link toos ah</strong> oo aad asxaabtaada ugu dirtid WhatsApp si ay kuugu soo galaan (ilaa 20 qof)!
+                          Host an online multiplayer match. Generate an instant <strong className="text-amber-400">invite link</strong> to share with friends (up to 20 players).
                         </p>
                       </div>
 
@@ -680,7 +671,7 @@ export default function App() {
                         className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 disabled:opacity-50 text-white font-bold rounded-2xl shadow-xl shadow-amber-950/60 transition-all text-sm flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <span>🔗</span>
-                        <span>{isConnecting ? 'Qolka ayaa la furayaa...' : 'Abuur Qol & Hel Link-ga'}</span>
+                        <span>{isConnecting ? 'Creating room...' : 'Create Room & Get Link'}</span>
                       </button>
                     </div>
 
@@ -693,26 +684,26 @@ export default function App() {
                             🔑
                           </span>
                           <h3 className="text-base sm:text-lg font-bold text-stone-100">
-                            Ku Biir Link ama Fure
+                            Join Room
                           </h3>
                         </div>
                         <p className="text-xs text-stone-400 leading-relaxed mb-3">
-                          Ku dhaji xiriirka (Link) laguu soo diray ama furiha qolka si aad toos ugu biirto!
+                          Paste an invite link or room code to join an ongoing match.
                         </p>
 
                         <div className="flex flex-col gap-1.5">
                           <label className="text-[11px] text-stone-400 font-bold uppercase tracking-wider">
-                            Link-ga ama Furiha Qolka:
+                            Room Code or Link:
                           </label>
                           <input
                             type="text"
                             value={joinCode}
                             onChange={(e) => handleJoinCodeChange(e.target.value)}
-                            placeholder="DHAAJI LINK-GA AMA FURIHA"
+                            placeholder="PASTE LINK OR CODE"
                             className="w-full bg-stone-950 border-2 border-stone-700/80 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-mono text-amber-400 font-bold focus:outline-none focus:border-emerald-500 shadow-inner"
                           />
                           <span className="text-[10px] text-stone-500">
-                            Waxaad ku dhaji kartaa link-ga oo buuxa (tus. https://.../?room=ABCD) ama furiha oo kaliya.
+                            Paste a full invite URL (e.g. https://.../?room=ABCD) or room code.
                           </span>
                         </div>
                       </div>
@@ -724,7 +715,7 @@ export default function App() {
                         className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold rounded-2xl shadow-xl shadow-emerald-950/50 transition-all text-sm flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <span>🚀</span>
-                        <span>{isConnecting ? 'Khadka ayaa lala xiriirayaa...' : 'Toos Ugu Biir Qolka (Join)'}</span>
+                        <span>{isConnecting ? 'Connecting...' : 'Join Room'}</span>
                       </button>
                     </div>
                   </div>

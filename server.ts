@@ -131,6 +131,17 @@ function nextTurn(room: RoomState) {
 
   // Move turn index to next player
   let nextIndex = (room.currentTurnIndex + 1) % room.players.length;
+  if (nextIndex === 0) {
+    room.roundNumber = (room.roundNumber || 1) + 1;
+    if (room.roundNumber === 2) {
+      addLog(
+        room,
+        `⚔️ Wareegii 1-aad wuu dhammaaday! Wareegga 2-aad ayaa bilaabmay — hadda weerarka, dhibco jarista, iyo xabsiga waa furan yihiin!`,
+        `⚔️ Round 1 complete! Round 2 has begun — attacks, deductions, and jail locks are now active!`,
+        'roll'
+      );
+    }
+  }
   room.currentTurnIndex = nextIndex;
   room.lastRoll = null;
   room.pendingPoints = 0;
@@ -182,23 +193,43 @@ function handleAiTurn(room: RoomState) {
     const roll = (Math.floor(Math.random() * 6) + 1) as DiceValue;
     liveRoom.lastRoll = roll;
 
+    const isRound1 = (liveRoom.roundNumber || 1) === 1;
+
     if (roll === 5 || roll === 6) {
       const points = roll === 5 ? 5 : 10;
-      liveRoom.pendingPoints = points;
-      liveRoom.phase = 'MANAGING';
+      if (isRound1) {
+        aiPlayer.score = Math.min(30, aiPlayer.score + points);
+        liveRoom.pendingPoints = 0;
+        liveRoom.phase = 'TURN_SKIPPED';
+        addLog(
+          liveRoom,
+          `🛡️ Wareegga 1 (Badbaado): ${aiPlayer.name} wuxuu keenay [${roll}] waxaana si toos ah loogu daray +${points} dhibcood! (${aiPlayer.score}/30).`,
+          `🛡️ Round 1 (Safe): ${aiPlayer.name} rolled [${roll}] and auto-claimed +${points} pts! (${aiPlayer.score}/30).`,
+          'point'
+        );
+        broadcastRoom(liveRoom.id, { type: 'DICE_ROLLED', value: roll, points });
 
-      addLog(
-        liveRoom,
-        `🎲 ${aiPlayer.name} wuxuu keenay [${roll}]! Wuxuu helay ${points} dhibcood oo uu maamulo.`,
-        `🎲 ${aiPlayer.name} rolled [${roll}]! Earned ${points} action points to manage.`,
-        'roll'
-      );
-      broadcastRoom(liveRoom.id, { type: 'DICE_ROLLED', value: roll, points });
+        setTimeout(() => {
+          const afterRoom = rooms.get(room.id);
+          if (afterRoom) nextTurn(afterRoom);
+        }, 1800);
+      } else {
+        liveRoom.pendingPoints = points;
+        liveRoom.phase = 'MANAGING';
 
-      // After 1.4s, AI makes strategic moves
-      setTimeout(() => {
-        executeAiDecisions(liveRoom, aiPlayer, points);
-      }, 1400);
+        addLog(
+          liveRoom,
+          `🎲 ${aiPlayer.name} wuxuu keenay [${roll}]! Wuxuu helay ${points} dhibcood oo uu maamulo.`,
+          `🎲 ${aiPlayer.name} rolled [${roll}]! Earned ${points} action points to manage.`,
+          'roll'
+        );
+        broadcastRoom(liveRoom.id, { type: 'DICE_ROLLED', value: roll, points });
+
+        // After 1.4s, AI makes strategic moves
+        setTimeout(() => {
+          executeAiDecisions(liveRoom, aiPlayer, points);
+        }, 1400);
+      }
     } else {
       liveRoom.pendingPoints = 0;
       liveRoom.phase = 'TURN_SKIPPED';
@@ -259,8 +290,8 @@ function executeAiDecisions(room: RoomState, ai: Player, availablePoints: number
     }
   }
 
-  // 3. Put remaining points into self points up to max 10
-  const roomForSelf = Math.max(0, 10 - ai.score);
+  // 3. Put remaining points into self points up to max 30
+  const roomForSelf = Math.max(0, 30 - ai.score);
   selfPoints = Math.min(roomForSelf, remaining);
   remaining -= selfPoints;
 
@@ -309,9 +340,15 @@ function executePlayerActions(
     throw new Error(`Kama badsan kartid ${maxPointsAllowed} dhibcood oo aad keentay.`);
   }
 
-  // Check self score cap strictly <= 10
-  if (player.score + selfPoints > 10) {
-    throw new Error('Dhibcahaaga kama badnaan karaan 10 dhibcood (Max score is 10).');
+  // Check self score cap strictly <= 30
+  if (player.score + selfPoints > 30) {
+    throw new Error('Dhibcahaaga kama badnaan karaan 30 dhibcood (Max score is 30).');
+  }
+
+  if ((room.roundNumber || 1) === 1) {
+    if ((allocation.deductions?.length || 0) > 0 || (allocation.locks?.length || 0) > 0) {
+      throw new Error('Weerarka iyo xabsiga lama ogola wareegga 1-aad (Attacks not allowed in Round 1).');
+    }
   }
 
   // 1. Process Deductions
@@ -420,12 +457,13 @@ wss.on('connection', (ws: WebSocket) => {
             pendingPoints: 0,
             turnStartTime: Date.now(),
             settings: {
-              maxScoreCap: 10,
+              maxScoreCap: 30,
               maxPlayers: msg.maxPlayers || 20,
               turnTimeLimit: 45,
             },
             logs: [],
             winnerId: null,
+            roundNumber: 1,
           };
 
           addLog(
@@ -595,6 +633,7 @@ wss.on('connection', (ws: WebSocket) => {
           }
 
           room.phase = 'ROLLING';
+          room.roundNumber = 1;
           room.currentTurnIndex = 0;
           room.lastRoll = null;
           room.pendingPoints = 0;
@@ -609,8 +648,8 @@ wss.on('connection', (ws: WebSocket) => {
 
           addLog(
             room,
-            `🔥 Ciyaarta Taraq ayaa bilaabatay! Qofka koowaad waa ${room.players[0].name}.`,
-            `🔥 Taraq game has started! First turn: ${room.players[0].name}.`,
+            `🔥 Ciyaarta Taraq ayaa bilaabatay! Wareegga 1-aad waa badbaado: lama is dili karo, qof kasta wuxuu keeno toos ayuu u qaadanayaa.`,
+            `🔥 Taraq game has started! Round 1 is a Safe Round: attacks/jail disabled, all rolled points are auto-claimed!`,
             'chat'
           );
 
@@ -638,19 +677,43 @@ wss.on('connection', (ws: WebSocket) => {
           const roll = (Math.floor(Math.random() * 6) + 1) as DiceValue;
           room.lastRoll = roll;
 
+          const isRound1 = (room.roundNumber || 1) === 1;
+
           if (roll === 5 || roll === 6) {
             const points = roll === 5 ? 5 : 10;
-            room.pendingPoints = points;
-            room.phase = 'MANAGING';
+            if (isRound1) {
+              currentPlayer.score = Math.min(30, currentPlayer.score + points);
+              room.pendingPoints = 0;
+              room.phase = 'TURN_SKIPPED';
 
-            addLog(
-              room,
-              `🎲 ${currentPlayer.name} wuxuu keenay [${roll}]! Wuxuu helay ${points} dhibcood oo uu maamulo.`,
-              `🎲 ${currentPlayer.name} rolled [${roll}]! Earned ${points} action points to manage.`,
-              'roll'
-            );
+              addLog(
+                room,
+                `🛡️ Wareegga 1 (Badbaado): ${currentPlayer.name} wuxuu keenay [${roll}] waxaana si toos ah loogu daray +${points} dhibcood! (${currentPlayer.score}/30). Lama is dili karo wareeggan.`,
+                `🛡️ Round 1 (Safe): ${currentPlayer.name} rolled [${roll}] and auto-claimed +${points} pts! (${currentPlayer.score}/30). Attacks disabled in Round 1.`,
+                'point'
+              );
 
-            broadcastRoom(room.id, { type: 'DICE_ROLLED', value: roll, points });
+              broadcastRoom(room.id, { type: 'DICE_ROLLED', value: roll, points });
+
+              setTimeout(() => {
+                const liveRoom = rooms.get(room.id);
+                if (liveRoom && liveRoom.phase === 'TURN_SKIPPED') {
+                  nextTurn(liveRoom);
+                }
+              }, 1800);
+            } else {
+              room.pendingPoints = points;
+              room.phase = 'MANAGING';
+
+              addLog(
+                room,
+                `🎲 ${currentPlayer.name} wuxuu keenay [${roll}]! Wuxuu helay ${points} dhibcood oo uu maamulo.`,
+                `🎲 ${currentPlayer.name} rolled [${roll}]! Earned ${points} action points to manage.`,
+                'roll'
+              );
+
+              broadcastRoom(room.id, { type: 'DICE_ROLLED', value: roll, points });
+            }
           } else {
             // 1, 2, 3, 4 gives 0 points
             room.pendingPoints = 0;

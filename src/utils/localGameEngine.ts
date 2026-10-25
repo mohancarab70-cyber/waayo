@@ -98,6 +98,7 @@ export class LocalGameEngine {
       },
       logs: [],
       winnerId: null,
+      roundNumber: 1,
     };
 
     this.addLog(
@@ -203,6 +204,7 @@ export class LocalGameEngine {
     }
 
     this.room.phase = 'ROLLING';
+    this.room.roundNumber = 1;
     this.room.currentTurnIndex = 0;
     this.room.winnerId = null;
     this.room.lastRoll = null;
@@ -216,8 +218,8 @@ export class LocalGameEngine {
     }
 
     this.addLog(
-      `🏁 Ciyaartii waa bilaabatay! Qof kasta wuxuu bilaabayaa 0 dhibcood.`,
-      `🏁 The game has begun! Everyone starts with 0 points.`,
+      `🏁 Ciyaartii waa bilaabatay! Wareegga 1-aad waa badbaado: lama is dili karo, qof walba wuxuu keeno toos (automatic) ayuu u qaadanayaa.`,
+      `🏁 Game started! Round 1 is a Safe Round: attacks/jail disabled, all rolled points are auto-claimed!`,
       'roll'
     );
 
@@ -233,24 +235,38 @@ export class LocalGameEngine {
     const roll = (Math.floor(Math.random() * 6) + 1) as DiceValue;
     this.room.lastRoll = roll;
 
-    if (roll === 5) {
-      this.room.pendingPoints = 5;
-      this.room.phase = 'MANAGING';
-      this.addLog(
-        `🎲 ${current.name} wuxuu keenay [5]! Wuxuu helay 5 dhibcood oo uu maamuli karo.`,
-        `🎲 ${current.name} rolled [5]! Has 5 points to allocate.`,
-        'roll'
-      );
-      this.notify({ type: 'DICE_ROLLED', value: roll, points: 5 });
-    } else if (roll === 6) {
-      this.room.pendingPoints = 10;
-      this.room.phase = 'MANAGING';
-      this.addLog(
-        `🎯 ${current.name} wuxuu keenay [6]! Wuxuu helay 10 dhibcood oo uu maamuli karo!`,
-        `🎯 ${current.name} rolled [6]! Has 10 points to allocate!`,
-        'roll'
-      );
-      this.notify({ type: 'DICE_ROLLED', value: roll, points: 10 });
+    const isRound1 = (this.room.roundNumber || 1) === 1;
+
+    if (roll === 5 || roll === 6) {
+      const points = roll === 5 ? 5 : 10;
+      if (isRound1) {
+        // Round 1: Attacks strictly disabled, auto-credit rolled points to self
+        current.score = Math.min(30, current.score + points);
+        this.room.pendingPoints = 0;
+        this.room.phase = 'TURN_SKIPPED';
+        this.addLog(
+          `🛡️ Wareegga 1 (Badbaado): ${current.name} wuxuu keenay [${roll}] waxaana si toos ah loogu daray +${points} dhibcood! (${current.score}/30). Lama is dili karo wareeggan.`,
+          `🛡️ Round 1 (Safe): ${current.name} rolled [${roll}] and auto-claimed +${points} pts! (${current.score}/30). Attacks disabled in Round 1.`,
+          'point'
+        );
+        this.notify({ type: 'DICE_ROLLED', value: roll, points });
+        this.timer = setTimeout(() => {
+          if (!this.destroyed) this.nextTurn();
+        }, 2000);
+      } else {
+        this.room.pendingPoints = points;
+        this.room.phase = 'MANAGING';
+        this.addLog(
+          roll === 5
+            ? `🎲 ${current.name} wuxuu keenay [5]! Wuxuu helay 5 dhibcood oo uu maamuli karo.`
+            : `🎯 ${current.name} wuxuu keenay [6]! Wuxuu helay 10 dhibcood oo uu maamuli karo!`,
+          roll === 5
+            ? `🎲 ${current.name} rolled [5]! Has 5 points to allocate.`
+            : `🎯 ${current.name} rolled [6]! Has 10 points to allocate!`,
+          'roll'
+        );
+        this.notify({ type: 'DICE_ROLLED', value: roll, points });
+      }
     } else {
       this.room.pendingPoints = 0;
       this.room.phase = 'TURN_SKIPPED';
@@ -317,6 +333,12 @@ export class LocalGameEngine {
 
     if (player.score + selfPoints > 30) {
       throw new Error('Dhibcahaaga kama badnaan karaan 30 dhibcood (Max score is 30).');
+    }
+
+    if ((this.room.roundNumber || 1) === 1) {
+      if ((allocation.deductions?.length || 0) > 0 || (allocation.locks?.length || 0) > 0 || (allocation.lockAdjustments?.some((a) => a.delta > 0))) {
+        throw new Error('Weerarka iyo xabsiga lama ogola wareegga 1-aad (Attacks not allowed in Round 1).');
+      }
     }
 
     // 1. Deductions
@@ -444,7 +466,23 @@ export class LocalGameEngine {
 
     this.room.pendingPoints = 0;
     this.room.lastRoll = null;
-    this.room.currentTurnIndex = (this.room.currentTurnIndex + 1) % this.room.players.length;
+
+    const prevIndex = this.room.currentTurnIndex;
+    const nextIndex = (prevIndex + 1) % this.room.players.length;
+
+    // Check if full cycle around the table has completed to advance round
+    if (nextIndex === 0) {
+      this.room.roundNumber = (this.room.roundNumber || 1) + 1;
+      if (this.room.roundNumber === 2) {
+        this.addLog(
+          `⚔️ Wareegii 1-aad wuu dhammaaday! Wareegga 2-aad ayaa bilaabmay — hadda weerarka, dhibco jarista, iyo xabsiga waa furan yihiin!`,
+          `⚔️ Round 1 complete! Round 2 has begun — attacks, deductions, and jail locks are now active!`,
+          'roll'
+        );
+      }
+    }
+
+    this.room.currentTurnIndex = nextIndex;
     this.room.turnStartTime = Date.now();
 
     this.checkCurrentTurn();
@@ -492,20 +530,39 @@ export class LocalGameEngine {
     const roll = (Math.floor(Math.random() * 6) + 1) as DiceValue;
     this.room.lastRoll = roll;
 
+    const isRound1 = (this.room.roundNumber || 1) === 1;
+
     if (roll === 5 || roll === 6) {
       const points = roll === 5 ? 5 : 10;
-      this.room.pendingPoints = points;
-      this.room.phase = 'MANAGING';
-      this.addLog(
-        `🎲 ${aiPlayer.name} wuxuu keenay [${roll}]! Wuxuu helay ${points} dhibcood.`,
-        `🎲 ${aiPlayer.name} rolled [${roll}]! Got ${points} points.`,
-        'roll'
-      );
-      this.notify({ type: 'DICE_ROLLED', value: roll, points });
+      if (isRound1) {
+        // Round 1: Attacks strictly disabled, auto-credit points to bot
+        current.score = Math.min(30, current.score + points);
+        this.room.pendingPoints = 0;
+        this.room.phase = 'TURN_SKIPPED';
+        this.addLog(
+          `🛡️ Wareegga 1 (Badbaado): ${aiPlayer.name} wuxuu keenay [${roll}] waxaana si toos ah loogu daray +${points} dhibcood! (${current.score}/30).`,
+          `🛡️ Round 1 (Safe): ${aiPlayer.name} rolled [${roll}] and auto-claimed +${points} pts! (${current.score}/30).`,
+          'point'
+        );
+        this.notify({ type: 'DICE_ROLLED', value: roll, points });
 
-      this.timer = setTimeout(() => {
-        if (!this.destroyed) this.executeBotDecisions(aiPlayer, points);
-      }, 1200);
+        this.timer = setTimeout(() => {
+          if (!this.destroyed) this.nextTurn();
+        }, 2000);
+      } else {
+        this.room.pendingPoints = points;
+        this.room.phase = 'MANAGING';
+        this.addLog(
+          `🎲 ${aiPlayer.name} wuxuu keenay [${roll}]! Wuxuu helay ${points} dhibcood.`,
+          `🎲 ${aiPlayer.name} rolled [${roll}]! Got ${points} points.`,
+          'roll'
+        );
+        this.notify({ type: 'DICE_ROLLED', value: roll, points });
+
+        this.timer = setTimeout(() => {
+          if (!this.destroyed) this.executeBotDecisions(aiPlayer, points);
+        }, 1200);
+      }
     } else {
       this.room.pendingPoints = 0;
       this.room.phase = 'TURN_SKIPPED';
@@ -567,9 +624,23 @@ export class LocalGameEngine {
     selfPoints = Math.min(roomForSelf, remaining);
     remaining -= selfPoints;
 
+    // 4. If bot still has remaining points, increase lock burden on locked opponents (up to 5 max)
+    const lockAdjustments: { targetId: string; delta: number }[] = [];
+    if (remaining > 0) {
+      const lockedOpponents = opponents.filter((p) => p.isLocked && p.lockPoints < 5);
+      for (const lockedOpp of lockedOpponents) {
+        if (remaining <= 0) break;
+        const addBurden = Math.min(remaining, 5 - lockedOpp.lockPoints);
+        if (addBurden > 0) {
+          lockAdjustments.push({ targetId: lockedOpp.id, delta: addBurden });
+          remaining -= addBurden;
+        }
+      }
+    }
+
     this.executePlayerActions(
       ai,
-      { selfPoints, deductions, locks, unlocks },
+      { selfPoints, deductions, locks, unlocks, lockAdjustments },
       availablePoints
     );
   }

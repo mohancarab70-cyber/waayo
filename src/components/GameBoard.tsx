@@ -14,11 +14,11 @@ interface GameBoardProps {
 }
 
 const QUICK_REACTIONS = [
-  { text: 'Hambalyo! 🎉', label: 'Hambalyo' },
-  { text: 'Waan ku xiray xabsiga! 🔒', label: 'Waan ku xiray' },
-  { text: 'Xabsiga iga saara! 🗝️', label: 'Iga saara' },
-  { text: 'Ha iga jarin dhibcaha! 😅', label: 'Ha iga jarin' },
-  { text: 'Guushu waa dhowdahay! 👑', label: 'Guul' },
+  { text: 'Well played! 🎉', label: 'Well played' },
+  { text: 'Locked you in jail! 🔒', label: 'Locked you' },
+  { text: 'Free me from jail! 🗝️', label: 'Free me' },
+  { text: 'Spare my points! 😅', label: 'Spare me' },
+  { text: 'Victory is near! 👑', label: 'Victory' },
 ];
 
 export const GameBoard: React.FC<GameBoardProps> = ({
@@ -30,6 +30,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   onSendChat,
 }) => {
   const [showLogs, setShowLogs] = useState(false);
+  const [isDiceAnimating, setIsDiceAnimating] = useState(false);
 
   const currentPlayer = room.players[room.currentTurnIndex] || room.players[0];
   const isMyTurn = currentPlayer && currentPlayer.id === currentPlayerId;
@@ -38,6 +39,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   const opponents = room.players.filter((p) => p.id !== currentPlayerId);
   const winner = room.winnerId ? room.players.find((p) => p.id === room.winnerId) : null;
   const activePlayersCount = room.players.filter((p) => !p.isLocked).length;
+
+  const handleRollClick = () => {
+    setIsDiceAnimating(true);
+    onRollDice();
+    // Safety fallback so state never hangs
+    setTimeout(() => {
+      setIsDiceAnimating(false);
+    }, 1200);
+  };
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-4 animate-fade-in relative">
@@ -49,28 +59,39 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           </div>
           <div>
             <div className="text-[11px] text-stone-400 font-medium">
-              Qolka: <span className="font-mono text-stone-200 font-bold">{room.roomCode}</span>
+              Room: <span className="font-mono text-stone-200 font-bold">{room.roomCode}</span>
             </div>
             <div className="text-sm font-bold text-amber-400 flex items-center gap-2">
-              <span>Kan ugu dambeeya ee wax xira ayaa guuleysanaya</span>
+              <span>Last standing player wins</span>
               <span className="text-xs text-stone-400 font-normal">
-                ({activePlayersCount}/{room.players.length} ciyaartooy ayaa furan)
+                ({activePlayersCount}/{room.players.length} active)
               </span>
             </div>
           </div>
         </div>
 
-        {/* Turn Status Banner */}
-        <div className="flex items-center gap-2">
+        {/* Turn & Round Status Banners */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Round Badge */}
+          {(room.roundNumber || 1) === 1 ? (
+            <div className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-emerald-950/90 border border-emerald-500/60 text-emerald-300 shadow-md">
+              <span className="text-sm">🛡️</span>
+              <span>Round 1: Safe Round</span>
+              <span className="hidden sm:inline text-[10px] text-emerald-400 font-normal">· Auto-points (No Attacks)</span>
+            </div>
+          ) : (
+            <div className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-stone-950/90 border border-amber-600/60 text-amber-300 shadow-md">
+              <span className="text-sm">⚔️</span>
+              <span>Round {room.roundNumber}</span>
+              <span className="hidden sm:inline text-[10px] text-amber-400 font-normal">· Combat Active</span>
+            </div>
+          )}
+
           {room.phase === 'TURN_SKIPPED' ? (
             <div className="px-3 py-1.5 bg-red-950/80 border border-red-700 text-red-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 animate-pulse shadow-md">
               <span className="text-base">🔒</span>
               <span>
-                {currentPlayer?.name} wuu xiran yahay (Waxaa lagu xiray{' '}
-                <strong className="text-amber-300 font-mono font-bold">
-                  {currentPlayer?.lockPoints || 0} pts
-                </strong>
-                ) · Waa la mootiyay!
+                {currentPlayer?.name} is locked ({currentPlayer?.lockPoints || 0} pts) · Turn skipped!
               </span>
             </div>
           ) : (
@@ -83,7 +104,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             >
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: currentPlayer?.color }} />
               <span>
-                {isMyTurn ? 'Wareeggaaga (Your Turn)!' : `Wareegga: ${currentPlayer?.name}`}
+                {isMyTurn ? 'Your Turn' : `${currentPlayer?.name}'s Turn`}
               </span>
             </div>
           )}
@@ -92,7 +113,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             onClick={() => setShowLogs(!showLogs)}
             className="text-xs px-2.5 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-medium border border-stone-700 transition-colors"
           >
-            📜 Diiwaanka ({room.logs.length})
+            📜 Logs ({room.logs.length})
           </button>
         </div>
       </div>
@@ -113,9 +134,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div className="relative z-10 p-3 sm:p-4 bg-stone-950/70 border-b border-stone-800/80">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <div className="text-xs font-semibold text-stone-300 flex items-center gap-2">
-              <span>👥 Asxaabta ({opponents.length})</span>
+              <span>👥 Opponents ({opponents.length})</span>
               <span className="text-[10px] text-stone-400">
-                · {room.players.filter((p) => !p.isLocked).length} furan · {room.players.filter((p) => p.isLocked).length} xiran
+                · {room.players.filter((p) => !p.isLocked).length} active · {room.players.filter((p) => p.isLocked).length} locked
               </span>
             </div>
           </div>
@@ -147,21 +168,21 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
                     {opp.isLocked ? (
                       <span
-                        title={`Xabsiga ku jira (${opp.lockPoints} dhibco)`}
+                        title={`Locked in jail (${opp.lockPoints} pts)`}
                         className="text-[9px] px-1 py-0.5 bg-red-950 border border-red-800 text-red-300 rounded font-bold shrink-0 animate-pulse"
                       >
                         🔒 {opp.lockPoints}p
                       </span>
                     ) : isTurn ? (
                       <span className="text-[9px] text-amber-400 font-bold shrink-0 animate-pulse">
-                        Wareegga
+                        Turn
                       </span>
                     ) : null}
                   </div>
 
                   {/* Compact score and matchstick representation */}
                   <div className="flex items-center justify-between text-[10px] pt-0.5 border-t border-stone-800/60">
-                    <span className="text-stone-400">Dhibco:</span>
+                    <span className="text-stone-400">Score:</span>
                     <span className="font-mono font-bold text-amber-400 tabular-nums">
                       {opp.score}/30
                     </span>
@@ -176,35 +197,38 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div className="relative z-10 flex flex-col items-center justify-center my-6">
           <Dice3D
             value={room.lastRoll}
-            isRolling={room.phase === 'ROLLING' && currentPlayer?.isAi}
-            canRoll={isMyTurn && room.phase === 'ROLLING'}
-            onRoll={onRollDice}
+            isRolling={(room.phase === 'ROLLING' && currentPlayer?.isAi) || isDiceAnimating}
+            canRoll={isMyTurn && room.phase === 'ROLLING' && !isDiceAnimating}
+            onRoll={handleRollClick}
+            onRollComplete={() => setIsDiceAnimating(false)}
             pendingPoints={room.pendingPoints}
           />
 
           <div className="text-center mt-1">
             {isMyTurn && room.phase === 'ROLLING' && (
               <p className="text-xs text-amber-300/90 font-medium animate-pulse">
-                Taabo laadhuuda ama badhanka si aad u tuurto!
+                Click the dice or button to roll!
               </p>
             )}
             {!isMyTurn && room.phase === 'ROLLING' && (
               <p className="text-xs text-stone-400">
-                Waxaa la sugayaa <strong className="text-stone-300">{currentPlayer?.name}</strong> inuu tuuro laadhuuda...
+                Waiting for <strong className="text-stone-300">{currentPlayer?.name}</strong> to roll...
               </p>
             )}
             {room.phase === 'MANAGING' && (
               <p className="text-xs text-amber-400 font-semibold">
                 {isMyTurn
-                  ? 'Fadlan maamul dhibcahaaga hoose!'
-                  : `${currentPlayer?.name} ayaa hadda maamulaya dhibcihiisa...`}
+                  ? 'Allocate your points below!'
+                  : `${currentPlayer?.name} is allocating points...`}
               </p>
             )}
             {room.phase === 'TURN_SKIPPED' && (
               <p className="text-xs text-stone-300 font-medium bg-stone-900/80 px-3 py-1 rounded-lg border border-stone-800 inline-block">
                 {room.lastRoll
-                  ? `🎲 Lambar [${room.lastRoll}] waa eber (0 dhibco) · Wareeggu wuu dhaafayaa...`
-                  : 'Wareeggu wuu dhaafayaa...'}
+                  ? (room.roundNumber || 1) === 1 && (room.lastRoll === 5 || room.lastRoll === 6)
+                    ? `🛡️ Rolled [${room.lastRoll}] (+${room.lastRoll === 5 ? 5 : 10} pts claimed automatically!)`
+                    : `🎲 Rolled [${room.lastRoll}] (0 pts) · Turn passes...`
+                  : 'Turn passes...'}
               </p>
             )}
           </div>
@@ -227,21 +251,21 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 </div>
                 <div>
                   <div className="font-bold text-sm text-stone-100 flex items-center gap-1.5">
-                    <span>{you?.name} (Adiga)</span>
+                    <span>{you?.name} (You)</span>
                     {you?.isLocked && (
                       <span className="text-[10px] text-red-400 bg-red-950/80 px-1.5 py-0.5 rounded border border-red-800 flex items-center gap-1 font-bold">
-                        <span>🔒 Xiran tahay ({you.lockPoints} pts)</span>
+                        <span>🔒 Locked ({you.lockPoints} pts)</span>
                       </span>
                     )}
                   </div>
                   <div className="text-[11px] text-stone-400">
-                    {you?.isLocked ? 'Xabsiga ayaad ku jirtaa, wareeggaaga waa la mootinayaa' : isMyTurn ? 'Waa wareeggaaga!' : 'Wareeggaaga sug'}
+                    {you?.isLocked ? 'In jail · Turn is skipped' : isMyTurn ? 'Your turn to roll!' : 'Waiting for turn'}
                   </div>
                 </div>
               </div>
 
               <div className="text-right">
-                <div className="text-[10px] text-stone-400 font-medium">Dhibcahaaga</div>
+                <div className="text-[10px] text-stone-400 font-medium">Your Score</div>
                 <div className="text-xl font-extrabold font-mono text-amber-400 tabular-nums">
                   {you?.score || 0} <span className="text-xs text-stone-500 font-normal">/ 30 max</span>
                 </div>
@@ -254,14 +278,14 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 <span className="text-2xl">🔒</span>
                 <div>
                   <div className="font-bold text-red-300">
-                    Xabsiga ayaad ku jirtaa! Waxaa lagugu xiray{' '}
+                    You are in Jail! Locked with{' '}
                     <strong className="text-amber-300 font-mono text-sm underline font-bold">
-                      {you.lockPoints} dhibcood
+                      {you.lockPoints} pts
                     </strong>
                     .
                   </div>
                   <p className="text-[11px] text-stone-300 mt-0.5">
-                    Wareeggaaga waa la mootiyayaa ilaa qof asxaabta ka mid ahi uu bixiyo {you.lockPoints} dhibcood oo uu ku soo fasaxo.
+                    Your turns are skipped until a player spends {you.lockPoints} points to release you.
                   </p>
                 </div>
               </div>
@@ -278,7 +302,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
       {/* Quick Reactions Bar */}
       <div className="flex flex-wrap items-center justify-center gap-2 bg-stone-900/80 border border-stone-800 p-2.5 rounded-2xl">
-        <span className="text-xs text-stone-400 font-medium mr-1">Dareen:</span>
+        <span className="text-xs text-stone-400 font-medium mr-1">Reactions:</span>
         {QUICK_REACTIONS.map((react, i) => (
           <button
             key={i}
@@ -295,13 +319,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 shadow-xl max-h-60 overflow-y-auto">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-bold text-xs text-stone-300 uppercase tracking-wider">
-              Diiwaanka Ciyaarta (Game Log)
+              Game Log
             </h3>
             <button
               onClick={() => setShowLogs(false)}
               className="text-stone-400 hover:text-stone-200 text-xs"
             >
-              ✕ Xir
+              ✕ Close
             </button>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -310,7 +334,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 key={log.id}
                 className="text-xs text-stone-300 p-1.5 rounded bg-stone-950/70 border border-stone-800/60"
               >
-                {log.textSo}
+                {log.textEn || log.textSo}
               </div>
             ))}
           </div>
@@ -319,7 +343,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
       {/* Action Manager Modal */}
       <ActionManagerModal
-        isOpen={isMyTurn && room.phase === 'MANAGING' && room.pendingPoints > 0}
+        isOpen={isMyTurn && room.phase === 'MANAGING' && room.pendingPoints > 0 && !isDiceAnimating && (room.roundNumber || 1) > 1}
         availablePoints={room.pendingPoints}
         currentPlayer={you}
         players={room.players}
@@ -332,18 +356,18 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           <div className="bg-stone-900 border-2 border-amber-500 w-full max-w-md rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center gap-4">
             <div className="text-5xl animate-bounce">👑</div>
             <h2 className="text-2xl font-extrabold font-serif text-amber-400">
-              Guuleystaha Ciyaarta Taraq!
+              Taraq Champion!
             </h2>
             <div className="text-lg font-bold text-stone-100">
-              {winner.name} ayaa ku guuleystay!
+              {winner.name} wins the match!
             </div>
             <p className="text-xs text-stone-300 leading-relaxed">
-              Wuxuu noqday qofka ugu dambeeyay ee xiray dhammaan asxaabtii kale!
+              Last standing player after locking all opponents in jail!
             </p>
 
             <div className="w-full bg-stone-950 p-4 rounded-xl border border-stone-800 my-2">
               <div className="text-xs font-semibold text-stone-400 mb-2">
-                Xaaladda Ciyaartooyda:
+                Player Standings:
               </div>
               <div className="flex flex-col gap-2">
                 {room.players.map((p) => (
@@ -355,11 +379,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                       <span>{p.avatar}</span>
                       <span>{p.name}</span>
                       {p.id === winner.id && (
-                        <span className="text-amber-400 font-bold">🏆 GUULEYSTE</span>
+                        <span className="text-amber-400 font-bold">🏆 WINNER</span>
                       )}
                     </span>
                     <span className="text-stone-400 font-mono text-[11px]">
-                      {p.isLocked ? `🔒 Xiran (${p.lockPoints}p)` : '✓ Furan'}
+                      {p.isLocked ? `🔒 Locked (${p.lockPoints}p)` : '✓ Free'}
                     </span>
                   </div>
                 ))}
@@ -371,11 +395,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 onClick={onRestartGame}
                 className="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg transition-all text-sm"
               >
-                🔄 Dib u bilow Ciyaarta (Play Again)
+                🔄 Play Again
               </button>
             ) : (
               <div className="text-xs text-stone-400 italic">
-                Waxaa la sugayaa marti-geliyaha inuu dib u bilaabo ciyaarta...
+                Waiting for host to restart match...
               </div>
             )}
           </div>

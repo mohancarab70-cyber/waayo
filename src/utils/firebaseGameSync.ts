@@ -81,6 +81,7 @@ export class FirebaseRoomSync {
           },
           logs: data.logs || [],
           winnerId: data.winnerId || null,
+          roundNumber: data.roundNumber || 1,
         };
 
         const prevRoom = this.currentRoom;
@@ -134,6 +135,7 @@ export class FirebaseRoomSync {
       lastRoll: updatedRoom.lastRoll,
       pendingPoints: updatedRoom.pendingPoints,
       winnerId: updatedRoom.winnerId,
+      roundNumber: updatedRoom.roundNumber || 1,
       logs: updatedRoom.logs.slice(-50), // keep last 50 logs
       updatedAt: Date.now(),
       createdAt: updatedRoom.turnStartTime || Date.now(),
@@ -157,6 +159,7 @@ export class FirebaseRoomSync {
     const room: RoomState = {
       ...this.currentRoom,
       phase: 'ROLLING',
+      roundNumber: 1,
       currentTurnIndex: 0,
       winnerId: null,
       lastRoll: null,
@@ -173,8 +176,8 @@ export class FirebaseRoomSync {
         {
           id: `log-${Date.now()}`,
           timestamp: Date.now(),
-          textSo: '🏁 Ciyaartii waa bilaabatay! Qof kasta wuxuu leeyahay 0 dhibcood.',
-          textEn: '🏁 Game started! Everyone starts with 0 points.',
+          textSo: '🏁 Ciyaartii waa bilaabatay! Wareegga 1-aad waa badbaado: lama is dili karo, dhibcaha toos (automatic) ayaa loo qaadanayaa.',
+          textEn: '🏁 Game started! Round 1 is a Safe Round: no attacks/jail, all points rolled are auto-claimed!',
           type: 'roll',
         },
       ],
@@ -259,28 +262,42 @@ export class FirebaseRoomSync {
 
     const roll = (Math.floor(Math.random() * 6) + 1) as DiceValue;
     const newLogs = [...this.currentRoom.logs];
+    const isRound1 = (this.currentRoom.roundNumber || 1) === 1;
 
     let pending = 0;
     let nextPhase: RoomState['phase'] = 'MANAGING';
+    const players = this.currentRoom.players.map((p) => ({ ...p }));
+    const pCurrent = players.find((p) => p.id === current.id)!;
 
-    if (roll === 5) {
-      pending = 5;
-      newLogs.push({
-        id: `log-${Date.now()}`,
-        timestamp: Date.now(),
-        textSo: `🎲 ${current.name} wuxuu keenay [5]! Wuxuu helay 5 dhibcood.`,
-        textEn: `🎲 ${current.name} rolled [5]! 5 points.`,
-        type: 'roll',
-      });
-    } else if (roll === 6) {
-      pending = 10;
-      newLogs.push({
-        id: `log-${Date.now()}`,
-        timestamp: Date.now(),
-        textSo: `🎯 ${current.name} wuxuu keenay [6]! Wuxuu helay 10 dhibcood!`,
-        textEn: `🎯 ${current.name} rolled [6]! 10 points!`,
-        type: 'roll',
-      });
+    if (roll === 5 || roll === 6) {
+      const points = roll === 5 ? 5 : 10;
+      if (isRound1) {
+        // Round 1: Attacks strictly disabled, auto-credit rolled points to self
+        pCurrent.score = Math.min(30, pCurrent.score + points);
+        pending = 0;
+        nextPhase = 'TURN_SKIPPED';
+        newLogs.push({
+          id: `log-${Date.now()}`,
+          timestamp: Date.now(),
+          textSo: `🛡️ Wareegga 1 (Badbaado): ${current.name} wuxuu keenay [${roll}] waxaana si toos ah loogu daray +${points} dhibcood! (${pCurrent.score}/30). Lama is dili karo.`,
+          textEn: `🛡️ Round 1 (Safe): ${current.name} rolled [${roll}] and auto-claimed +${points} pts! (${pCurrent.score}/30). Attacks disabled in Round 1.`,
+          type: 'point',
+        });
+      } else {
+        pending = points;
+        nextPhase = 'MANAGING';
+        newLogs.push({
+          id: `log-${Date.now()}`,
+          timestamp: Date.now(),
+          textSo: roll === 5
+            ? `🎲 ${current.name} wuxuu keenay [5]! Wuxuu helay 5 dhibcood.`
+            : `🎯 ${current.name} wuxuu keenay [6]! Wuxuu helay 10 dhibcood!`,
+          textEn: roll === 5
+            ? `🎲 ${current.name} rolled [5]! 5 points.`
+            : `🎯 ${current.name} rolled [6]! 10 points!`,
+          type: 'roll',
+        });
+      }
     } else {
       pending = 0;
       nextPhase = 'TURN_SKIPPED';
@@ -295,6 +312,7 @@ export class FirebaseRoomSync {
 
     const updatedRoom: RoomState = {
       ...this.currentRoom,
+      players,
       lastRoll: roll,
       pendingPoints: pending,
       phase: nextPhase,
@@ -304,7 +322,7 @@ export class FirebaseRoomSync {
     await this.saveRoomState(updatedRoom);
 
     if (nextPhase === 'TURN_SKIPPED') {
-      // Allow players to see the rolled face (1, 2, 3, or 4) and 3D roll animation
+      // Allow players to see the rolled face (1..6) and 3D roll animation
       setTimeout(async () => {
         if (this.destroyed) return;
         if (this.currentRoom && this.currentRoom.phase === 'TURN_SKIPPED' && this.currentRoom.lastRoll === roll) {
@@ -363,6 +381,12 @@ export class FirebaseRoomSync {
 
     if (totalSpent > room.pendingPoints) {
       throw new Error(`Kama badsan kartid ${room.pendingPoints} dhibcood.`);
+    }
+
+    if ((room.roundNumber || 1) === 1) {
+      if ((allocation.deductions?.length || 0) > 0 || (allocation.locks?.length || 0) > 0 || (allocation.lockAdjustments?.some((a) => a.delta > 0))) {
+        throw new Error('Weerarka iyo xabsiga lama ogola wareegga 1-aad (Attacks not allowed in Round 1).');
+      }
     }
 
     // 1. Deductions
@@ -501,6 +525,21 @@ export class FirebaseRoomSync {
     let attempts = 0;
     const logs = [...room.logs];
 
+    let roundNumber = room.roundNumber || 1;
+    // Check if full cycle around the table has completed to advance round
+    if (nextIdx === 0) {
+      roundNumber += 1;
+      if (roundNumber === 2) {
+        logs.push({
+          id: `log-${Date.now()}-r2`,
+          timestamp: Date.now(),
+          textSo: `⚔️ Wareegii 1-aad wuu dhammaaday! Wareegga 2-aad ayaa bilaabmay — hadda weerarka, dhibco jarista, iyo xabsiga waa furan yihiin!`,
+          textEn: `⚔️ Round 1 complete! Round 2 has begun — attacks, deductions, and jail locks are now active!`,
+          type: 'roll',
+        });
+      }
+    }
+
     // Skip locked players
     while (attempts < room.players.length) {
       const candidate = room.players[nextIdx];
@@ -520,6 +559,7 @@ export class FirebaseRoomSync {
 
     return {
       ...room,
+      roundNumber,
       currentTurnIndex: nextIdx,
       phase: 'ROLLING',
       lastRoll: null,
@@ -536,29 +576,63 @@ export class FirebaseRoomSync {
 
     const roll = (Math.floor(Math.random() * 6) + 1) as DiceValue;
     const logs = [...this.currentRoom.logs];
+    const isRound1 = (this.currentRoom.roundNumber || 1) === 1;
 
     if (roll === 5 || roll === 6) {
       const pts = roll === 5 ? 5 : 10;
-      logs.push({
-        id: `log-${Date.now()}`,
-        timestamp: Date.now(),
-        textSo: `🎲 ${bot.name} wuxuu keenay [${roll}]! Wuxuu helay ${pts} dhibcood.`,
-        textEn: `🎲 ${bot.name} rolled [${roll}]! Got ${pts} points.`,
-        type: 'roll',
-      });
+      if (isRound1) {
+        const players = this.currentRoom.players.map((p) => ({ ...p }));
+        const pBot = players.find((p) => p.id === bot.id)!;
+        pBot.score = Math.min(30, pBot.score + pts);
 
-      // Simple smart bot allocation
-      const roomWithRoll: RoomState = {
-        ...this.currentRoom,
-        lastRoll: roll,
-        pendingPoints: pts,
-        phase: 'MANAGING',
-        logs,
-      };
+        logs.push({
+          id: `log-${Date.now()}`,
+          timestamp: Date.now(),
+          textSo: `🛡️ Wareegga 1 (Badbaado): ${bot.name} wuxuu keenay [${roll}] waxaana si toos ah loogu daray +${pts} dhibcood! (${pBot.score}/30).`,
+          textEn: `🛡️ Round 1 (Safe): ${bot.name} rolled [${roll}] and auto-claimed +${pts} pts! (${pBot.score}/30).`,
+          type: 'point',
+        });
 
-      const allocation = this.calculateBotAllocation(roomWithRoll, bot, pts);
-      const updated = this.applyPointAllocation(roomWithRoll, bot, allocation);
-      await this.saveRoomState(updated);
+        const updatedRoom: RoomState = {
+          ...this.currentRoom,
+          players,
+          lastRoll: roll,
+          pendingPoints: 0,
+          phase: 'TURN_SKIPPED',
+          logs,
+        };
+
+        await this.saveRoomState(updatedRoom);
+
+        setTimeout(async () => {
+          if (this.destroyed) return;
+          if (this.currentRoom && this.currentRoom.phase === 'TURN_SKIPPED' && this.currentRoom.lastRoll === roll) {
+            const next = this.advanceTurn(this.currentRoom);
+            await this.saveRoomState(next);
+          }
+        }, 2000);
+      } else {
+        logs.push({
+          id: `log-${Date.now()}`,
+          timestamp: Date.now(),
+          textSo: `🎲 ${bot.name} wuxuu keenay [${roll}]! Wuxuu helay ${pts} dhibcood.`,
+          textEn: `🎲 ${bot.name} rolled [${roll}]! Got ${pts} points.`,
+          type: 'roll',
+        });
+
+        // Simple smart bot allocation
+        const roomWithRoll: RoomState = {
+          ...this.currentRoom,
+          lastRoll: roll,
+          pendingPoints: pts,
+          phase: 'MANAGING',
+          logs,
+        };
+
+        const allocation = this.calculateBotAllocation(roomWithRoll, bot, pts);
+        const updated = this.applyPointAllocation(roomWithRoll, bot, allocation);
+        await this.saveRoomState(updated);
+      }
     } else {
       logs.push({
         id: `log-${Date.now()}`,
@@ -631,6 +705,21 @@ export class FirebaseRoomSync {
     // 3. Keep remaining for self (max 30)
     const neededTo30 = Math.max(0, 30 - bot.score);
     allocation.selfPoints = Math.min(remaining, neededTo30);
+    remaining -= allocation.selfPoints;
+
+    // 4. If bot still has points, increase lock burden on locked opponents (up to 5 max)
+    if (remaining > 0) {
+      allocation.lockAdjustments = [];
+      const lockedOpponents = room.players.filter((p) => p.id !== bot.id && p.isLocked && p.lockPoints < 5);
+      for (const lockedOpp of lockedOpponents) {
+        if (remaining <= 0) break;
+        const addBurden = Math.min(remaining, 5 - lockedOpp.lockPoints);
+        if (addBurden > 0) {
+          allocation.lockAdjustments.push({ targetId: lockedOpp.id, delta: addBurden });
+          remaining -= addBurden;
+        }
+      }
+    }
 
     return allocation;
   }

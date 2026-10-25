@@ -29,7 +29,7 @@ export const VercelNoticeModal: React.FC<VercelNoticeModalProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-2xl">▲</span>
             <h2 className="text-lg font-bold text-amber-400">
-              Xogta Vercel & Shabakadda (Serverless & P2P)
+              Network & Deployment Info
             </h2>
           </div>
           <button
@@ -41,38 +41,29 @@ export const VercelNoticeModal: React.FC<VercelNoticeModalProps> = ({
         </div>
 
         <div className="text-xs space-y-3 leading-relaxed text-stone-300">
-          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-            <h3 className="font-bold text-amber-300 mb-1">
-              Maxaa sababay ciladii: "Laguma guuleysan in qol la abuuro"?
-            </h3>
-            <p>
-              Vercel waa adeeg qaada <strong>Static Frontend (Vite)</strong>. Ma wado Node.js server furan oo joogto ah (WebSockets). Sidaas darteed markii aad Vercel ku shubtay, ma uusan helin WebSocket server toos ah.
-            </p>
-          </div>
-
           <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
             <h3 className="font-bold text-emerald-300 mb-1">
-              Sidee hadda loo xalliyay adigoon wax kale u baahnayn?
+              Multiplayer Architecture
             </h3>
             <ul className="list-disc pl-4 space-y-1.5">
               <li>
-                <strong>Firebase Firestore Real-Time:</strong> Ciyaarta hadda waxay ku xiran tahay Google Cloud Firebase Firestore. Waxay isticmaashaa standard Port 443 (HTTPS), taasoo ka dhigan in Vercel, taleefannada gacanta (4G/5G), iyo browser-yada ay si toos ah iskugu xirmaan iyadoon wax server gooni ah la kireysan!
+                <strong>Cloud Firestore Real-Time:</strong> Connected to Google Cloud Firestore over HTTPS (Port 443). Compatible with mobile browsers, Vercel, and modern networks without dedicated socket server costs.
               </li>
               <li>
-                <strong>Link-ga Casuumaadda (1-Click Join):</strong> Qofka qolka furay wuxuu link-ga u diri karaa asxaabtiisa WhatsApp ama Telegram. Qofku isla markuu link-ga taabto wuxuu toos ugu biirayaa qolka.
+                <strong>1-Click Invite Links:</strong> Room hosts can share an instant link via WhatsApp or messaging apps to invite up to 20 players.
               </li>
               <li>
-                <strong>Habka Bots (Offline/Local Engine):</strong> Haddii aad offline tahay ama aad rabto ciyaar degdeg ah, waxaad toos ula dheeli kartaa Bots ilaa 20 ciyaartooy.
+                <strong>Offline Bot Engine:</strong> Play anytime directly in browser without an active connection.
               </li>
             </ul>
           </div>
 
           <div className="p-3 bg-stone-950 border border-stone-800 rounded-xl space-y-2">
             <h3 className="font-bold text-stone-200">
-              Ma doonaysaa inaad ku xirto WebSocket Server u gaar ah? (Ikhtiyaari)
+              Custom WebSocket Server (Optional)
             </h3>
             <p className="text-stone-400">
-              Haddii aad rabto inaad <code>server.ts</code> ku shubto adeegyada Node.js sida <strong>Render</strong>, <strong>Railway</strong>, ama <strong>Fly.io</strong>, halkan geli cinwaanka server-ka:
+              To route traffic through a custom backend (e.g. Render, Railway, or Fly.io), enter the URL below:
             </p>
             <div className="flex gap-2">
               <input
@@ -86,7 +77,7 @@ export const VercelNoticeModal: React.FC<VercelNoticeModalProps> = ({
                 onClick={handleSave}
                 className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs"
               >
-                Keydi
+                Save
               </button>
             </div>
           </div>
@@ -97,7 +88,7 @@ export const VercelNoticeModal: React.FC<VercelNoticeModalProps> = ({
             onClick={onClose}
             className="px-5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-semibold"
           >
-            Faham (Close)
+            Close
           </button>
         </div>
       </div>

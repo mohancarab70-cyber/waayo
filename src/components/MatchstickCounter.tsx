@@ -20,7 +20,7 @@ export const MatchstickCounter: React.FC<MatchstickCounterProps> = ({
     <div className="flex flex-col gap-1.5 w-full">
       <div className="flex items-center justify-between text-xs">
         <span className="text-stone-300 font-semibold flex items-center gap-1">
-          <span>Dhibcaha:</span>
+          <span>Points:</span>
           <span className="font-mono text-base font-bold text-amber-400 tabular-nums">
             {score}
           </span>
@@ -47,7 +47,7 @@ export const MatchstickCounter: React.FC<MatchstickCounterProps> = ({
         {Array.from({ length: Math.min(bundles, 8) }).map((_, i) => (
           <div
             key={`b-${i}`}
-            title="5 dhibcood (1 Taraq bundle)"
+            title="5 points (1 Taraq bundle)"
             className="flex items-center gap-0.5 px-1 py-0.5 bg-stone-900/60 rounded border border-amber-900/40"
           >
             {/* 4 vertical matches + 1 diagonal slash */}
@@ -70,7 +70,7 @@ export const MatchstickCounter: React.FC<MatchstickCounterProps> = ({
         {Array.from({ length: singles }).map((_, i) => (
           <span
             key={`s-${i}`}
-            title="1 dhibic"
+            title="1 point"
             className="w-1 h-3.5 bg-amber-400 rounded-full inline-block"
           />
         ))}

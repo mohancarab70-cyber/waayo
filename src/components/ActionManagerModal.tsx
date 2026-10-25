@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Player, PointAllocation } from '../types/game.js';
 import { soundManager } from '../utils/audio.js';
 
@@ -34,6 +34,17 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
 
   // Filter for opponents list
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Reset internal state cleanly whenever modal opens for a new roll
+  useEffect(() => {
+    if (isOpen) {
+      setSelfPoints(0);
+      setDeductions({});
+      setLocks({});
+      setLockAdjustments({});
+      setSearchQuery('');
+    }
+  }, [isOpen, availablePoints]);
 
   const opponents = useMemo(() => {
     return players.filter((p) => p.id !== currentPlayer.id);
@@ -222,18 +233,18 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
               <div className="flex items-center gap-2">
                 <span className="text-xl">🎲</span>
                 <h2 className="text-lg sm:text-xl font-bold font-serif text-amber-400">
-                  Maamul Dhibcaha (Point Allocation)
+                  Allocate Points
                 </h2>
               </div>
               <p className="text-xs text-stone-400 mt-0.5">
-                Waxaad heshay <strong className="text-amber-300 font-bold text-sm">+{availablePoints}</strong> dhibcood. U qaybi naftaada ama asxaabta!
+                You rolled <strong className="text-amber-300 font-bold text-sm">+{availablePoints}</strong> points. Assign to yourself or opponents.
               </p>
             </div>
 
             {/* Remaining Points Badge */}
             <div className="flex flex-col items-end shrink-0">
               <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">
-                Kuu Haray
+                Remaining
               </span>
               <div
                 className={`text-2xl sm:text-3xl font-extrabold font-mono tabular-nums leading-none px-3 py-1 rounded-xl border ${
@@ -258,14 +269,14 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                 className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold transition-all flex items-center gap-1.5"
               >
                 <span>⭐</span>
-                <span>Naftaada sii dhammaan (+{Math.min(maxSelfPossible, availablePoints)})</span>
+                <span>Claim All (+{Math.min(maxSelfPossible, availablePoints)})</span>
               </button>
               <button
                 type="button"
                 onClick={handleResetAll}
                 className="text-xs px-2.5 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 font-medium transition-colors"
               >
-                Dib u eber (Reset)
+                Reset
               </button>
             </div>
 
@@ -274,7 +285,7 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Raadi qof..."
+                placeholder="Search opponent..."
                 className="text-xs bg-stone-900 border border-stone-800 rounded-lg px-2.5 py-1 text-stone-200 focus:outline-none focus:border-amber-500 w-32 sm:w-40"
               />
             )}
@@ -291,13 +302,13 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
               </div>
               <div>
                 <div className="font-bold text-sm text-stone-100 flex items-center gap-1.5">
-                  <span>Dhibcahaaga (Adiga)</span>
+                  <span>Your Score</span>
                   <span className="text-[10px] text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded font-mono border border-amber-800">
                     Max: 30
                   </span>
                 </div>
                 <div className="text-xs text-stone-400 mt-0.5">
-                  Hadda: <strong className="text-stone-200 font-mono">{currentPlayer.score}/30</strong>
+                  Current: <strong className="text-stone-200 font-mono">{currentPlayer.score}/30</strong>
                   {selfPoints > 0 && (
                     <span className="text-emerald-400 font-bold ml-1.5 font-mono">
                       ➔ {currentPlayer.score + selfPoints}/30 (+{selfPoints})
@@ -335,7 +346,7 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                   onClick={handleAutoFillSelf}
                   className="text-xs px-2.5 py-1.5 rounded-lg bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 font-semibold border border-amber-500/40 ml-1 transition-all"
                 >
-                  Inta hartay shub
+                  Add Remaining
                 </button>
               )}
             </div>
@@ -343,9 +354,9 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
 
           {/* 2. OPPONENTS CARDS (Unified Per Player) */}
           <div className="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center justify-between">
-            <span>Asxaabta Kale ({opponents.length})</span>
+            <span>Opponents ({opponents.length})</span>
             <span className="text-[11px] font-normal text-stone-500">
-              Jar dhibco, xir xabsi, ama maamul culeyska xabsiga
+              Deduct points, lock in jail, or adjust lock burden
             </span>
           </div>
 
@@ -382,12 +393,12 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                         <div className="text-xs text-stone-400 font-mono">
                           {opp.isLocked ? (
                             <span className="text-red-400 font-bold flex items-center gap-1">
-                              <span>🔒 Xabsiga ku jira:</span>
-                              <span className="underline">{opp.lockPoints}/5 dhibcood</span>
+                              <span>🔒 Locked in Jail:</span>
+                              <span className="underline">{opp.lockPoints}/5 pts</span>
                             </span>
                           ) : (
                             <span>
-                              Dhibcaha hadda: <strong className="text-amber-300">{opp.score}/30</strong>
+                              Current: <strong className="text-amber-300">{opp.score}/30</strong>
                               {deductAmt > 0 && (
                                 <span className="text-red-400 font-bold ml-1">
                                   (-{deductAmt} ➔ {effectiveScore} pts)
@@ -403,15 +414,15 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                     <div>
                       {opp.isLocked ? (
                         <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-950 border border-red-800 text-red-300 font-bold">
-                          🔒 Xiran
+                          🔒 Locked
                         </span>
                       ) : effectiveScore === 0 ? (
                         <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/60 text-amber-300 font-bold animate-pulse">
-                          0 Eber (La xiri karo!)
+                          0 Pts (Can Lock!)
                         </span>
                       ) : (
                         <span className="text-[11px] px-2 py-0.5 rounded-full bg-stone-800 text-stone-400 font-medium">
-                          Furan
+                          Active
                         </span>
                       )}
                     </div>
@@ -421,7 +432,7 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                   {opp.isLocked && (
                     <div className="bg-stone-900/90 p-3 rounded-xl border border-stone-800 flex flex-col gap-2.5">
                       <div className="text-xs text-stone-300 font-semibold flex items-center justify-between">
-                        <span>Maamul Xabsigiisa (Jail Burden Manager):</span>
+                        <span>Jail Lock Burden:</span>
                         {activeAdj !== 0 && (
                           <span
                             className={`font-mono font-bold text-xs ${
@@ -429,26 +440,26 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                             }`}
                           >
                             {activeAdj > 0
-                              ? `+${activeAdj} Culeys lagu daray (Wadar: ${opp.lockPoints + activeAdj}/5 pts)`
-                              : `${activeAdj} Laga fududeeyay (${
+                              ? `+${activeAdj} Added (Total: ${opp.lockPoints + activeAdj}/5 pts)`
+                              : `${activeAdj} Reduced (${
                                   opp.lockPoints + activeAdj === 0
-                                    ? '🗝️ Wuu xoroobayaa!'
-                                    : `Haray: ${opp.lockPoints + activeAdj}/5 pts`
+                                    ? '🗝️ Freed!'
+                                    : `Remaining: ${opp.lockPoints + activeAdj}/5 pts`
                                 })`}
                           </span>
                         )}
                       </div>
 
-                      {/* Control Group A: Culeys ku dar (+) up to 5 */}
+                      {/* Control Group A: Add Burden (+) up to 5 */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 bg-stone-950/70 p-2 rounded-lg border border-stone-800">
                         <div className="text-[11px] text-stone-400 flex items-center gap-1">
-                          <span className="text-red-400 font-bold">➕ Culeys ku dar</span>
-                          <span>(ugu badnaan 5 gaarsii):</span>
+                          <span className="text-red-400 font-bold">➕ Add Burden</span>
+                          <span>(up to 5 max):</span>
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {opp.lockPoints >= 5 ? (
                             <span className="text-[11px] text-stone-500 italic">
-                              Wuxuu marayaa 5 (ugu badnaan lama kordhin karo)
+                              Max burden reached (5 pts)
                             </span>
                           ) : (
                             Array.from({ length: 5 - opp.lockPoints }).map((_, idx) => {
@@ -480,11 +491,11 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Control Group B: Culeys ka yaree (-) / Soo bixi */}
+                      {/* Control Group B: Reduce Burden (-) / Free */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 bg-stone-950/70 p-2 rounded-lg border border-stone-800">
                         <div className="text-[11px] text-stone-400 flex items-center gap-1">
-                          <span className="text-emerald-400 font-bold">➖ Culeys ka yaree</span>
-                          <span>(bixi dhibco):</span>
+                          <span className="text-emerald-400 font-bold">➖ Reduce Burden</span>
+                          <span>(spend points to free):</span>
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {Array.from({ length: opp.lockPoints }).map((_, idx) => {
@@ -509,7 +520,7 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                                     : 'bg-stone-900 text-stone-600 border border-stone-800 cursor-not-allowed'
                                 }`}
                               >
-                                {isFullRelease ? `🗝️ Soo daa (-${reduceAmt})` : `-${reduceAmt} pt`}
+                                {isFullRelease ? `🗝️ Free (-${reduceAmt})` : `-${reduceAmt} pt`}
                               </button>
                             );
                           })}
@@ -524,11 +535,11 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-stone-400 font-semibold flex items-center gap-1">
                           <span>⚔️</span>
-                          <span>Ka jar dhibco (Deduct Points):</span>
+                          <span>Deduct Points:</span>
                         </span>
                         {deductAmt > 0 && (
                           <span className="font-mono text-red-400 font-bold">
-                            -{deductAmt} dhibcood ayaa laga jarayaa
+                            -{deductAmt} pts deducted
                           </span>
                         )}
                       </div>
@@ -580,7 +591,7 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                             }
                             className="ml-auto text-xs px-2.5 py-1 rounded-lg bg-red-950/80 hover:bg-red-900 text-red-300 font-semibold border border-red-800 transition-colors"
                           >
-                            Ka wada jar ➔ 0
+                            Deduct All ➔ 0
                           </button>
                         )}
                       </div>
@@ -600,19 +611,19 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
                         <span className="font-bold flex items-center gap-1.5">
                           <span>🔒</span>
                           <span className={canBeLocked ? 'text-amber-300' : 'text-stone-400'}>
-                            Ku xir xabsiga (1 ilaa 5 dhibcood):
+                            Lock in Jail (1 to 5 points):
                           </span>
                         </span>
                         {activeLock > 0 && (
                           <span className="text-amber-400 font-mono font-bold">
-                            Waxaa lagu xirayaa {activeLock} dhibcood!
+                            Locking with {activeLock} pts!
                           </span>
                         )}
                       </div>
 
                       {!canBeLocked ? (
                         <p className="text-[11px] text-stone-500 italic">
-                          💡 Qofkani wuxuu leeyahay {effectiveScore} dhibco. Marka hore dhibcihiisa ka dhig 0 si aad u xirto!
+                          💡 Target has {effectiveScore} pts. Reduce to 0 to lock them.
                         </p>
                       ) : (
                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -666,18 +677,18 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
               <div className="flex items-center gap-2 text-amber-400">
                 <span>⚠️</span>
                 <span>
-                  Waxaa kuu dhiman <strong>{remainingPoints}</strong> dhibcood oo aad keentay (Dhammaan qoondee si aad u xaqiijiso).
+                  <strong>{remainingPoints}</strong> points unassigned. Allocate all to confirm.
                 </span>
               </div>
             ) : remainingPoints < 0 ? (
               <div className="flex items-center gap-2 text-red-400 font-bold">
                 <span>❌</span>
-                <span>Waxaad adeegsatay wax ka badan dhibcihii aad keentay!</span>
+                <span>Points allocated exceed roll!</span>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-emerald-400 font-bold">
                 <span>✅</span>
-                <span>Xisaabtu waa sax: Dhammaan {availablePoints} dhibcood ayaa la maamulay!</span>
+                <span>All {availablePoints} points allocated.</span>
               </div>
             )}
           </div>
@@ -688,7 +699,7 @@ export const ActionManagerModal: React.FC<ActionManagerModalProps> = ({
             disabled={remainingPoints !== 0}
             className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg transition-all text-sm"
           >
-            Xaqiiji Maamulka (Confirm)
+            Confirm & End Turn
           </button>
         </div>
       </div>

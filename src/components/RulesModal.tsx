@@ -15,7 +15,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
           <div className="flex items-center gap-2">
             <span className="text-2xl">📖</span>
             <h2 className="text-xl font-bold font-serif text-amber-400">
-              Shuruucda Cusub ee Taraq (New Rules)
+              Rules of Taraq
             </h2>
           </div>
           <button
@@ -31,45 +31,45 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
           <div className="bg-stone-950 p-3.5 rounded-xl border border-stone-800">
             <h3 className="font-bold text-amber-400 text-sm mb-1 flex items-center gap-2">
               <span>⭐</span>
-              <span>1. Xaddidaadda Dhibcaha (Ugu Badnaan 30 Dhibcood)</span>
+              <span>1. Dice & Scoring (30 Points Max)</span>
             </h3>
             <ul className="list-disc list-inside space-y-1 text-xs text-stone-300">
               <li>
-                Qofku <strong>30 dhibcood ka badan</strong> ma yeelan karo ciyaarta oo dhan (heerka ugu sarreeya ee dhibcaha qofku leeyahay waa 30 dhibcood)!
+                <strong>Score Cap:</strong> Each player can hold a maximum of <strong>30 points</strong>.
               </li>
               <li>
-                <strong className="text-amber-300">Lambar 5:</strong> Waxaad helaysaa 5 dhibcood oo aad maamulan karto.
+                <strong className="text-amber-300">Roll 5:</strong> Earns <strong>+5 points</strong> to allocate.
               </li>
               <li>
-                <strong className="text-emerald-300">Lambar 6:</strong> Waxaad helaysaa 10 dhibcood oo aad maamulan karto.
+                <strong className="text-emerald-300">Roll 6:</strong> Earns <strong>+10 points</strong> to allocate.
               </li>
               <li>
-                <strong className="text-stone-400">Lambarada 1, 2, 3, 4:</strong> Dhibco ma laha (Eber), wareeguna wuu dhaafayaa.
+                <strong className="text-stone-400">Rolls 1, 2, 3, 4:</strong> 0 points (Turn passes).
               </li>
             </ul>
           </div>
 
-          {/* Section 2: Locking in Jail with 1-5 Points & Math Example */}
+          {/* Section 2: Jail & Lock Mechanics */}
           <div className="bg-stone-950 p-3.5 rounded-xl border border-stone-800">
             <h3 className="font-bold text-red-400 text-sm mb-1 flex items-center gap-2">
-              <span>🧮</span>
-              <span>2. Xisaabta Ciyaarta & Xabsiga (1 ilaa 5 Dhibcood)</span>
+              <span>🔒</span>
+              <span>2. Jail & Lock Burden (1 to 5 Points)</span>
             </h3>
             <ul className="list-disc list-inside space-y-1.5 text-xs text-stone-300">
               <li>
-                <strong>Qofka 0 ah kaliya ayaa la xiri karaa:</strong> Haddii qofku leeyahay dhibco, lama xiri karo ilaa dhibcihiisa laga jaro oo laga dhigo <strong>0 (Eber)</strong>.
+                <strong>Opponent must be at 0:</strong> Deduct an opponent&apos;s points to 0 before they can be locked.
               </li>
               <li>
-                <strong>Ku xir 1 ilaa 5 dhibcood:</strong> Marka uu qofku 0 noqdo, waxaad ku xiri kartaa 1, 2, 3, 4, ama 5 dhibcood.
+                <strong>Lock (1–5 pts):</strong> Once at 0, lock them with 1 to 5 lock points. Locked players miss their turns.
               </li>
               <li>
-                <strong>➕ Culeyska ugu dar (+):</strong> Qof haddii uu xabsiga ku jiro (tusaale 3 dhibcood ku xiran yahay), ciyaartooydu waxay ugu dari karaan +1 ama +2 dhibcood si uu u gaaro <strong>5 dhibcood</strong> oo ah heerka ugu sarreeya.
+                <strong>Add Burden (+):</strong> Increase an existing prisoner&apos;s lock burden up to a max of <strong>5 points</strong>.
               </li>
               <li>
-                <strong>➖ Culeyska ka yaree (-):</strong> Haddii qofku 5 dhibcood ku xiran yahay, qof kasta wuxuu ka jari karaa 1, 2, 3, ama 4 dhibcood si culeyska looga yareeyo. Haddii dhibcaha xabsiga laga dhigo <strong>0</strong>, wuu xoroobayaa oo xabsiga ayuu ka baxayaa!
+                <strong>Reduce Burden / Free (-):</strong> Pay points to decrease an opponent&apos;s lock. Reducing it to <strong>0 frees them</strong>.
               </li>
               <li>
-                <strong>Xaddidaadda:</strong> Qofna ma adeegsan karo dhibco ka badan inta uu laadhuuda ku keenay (5 ama 10 dhibcood).
+                <strong>Strict Allocation:</strong> You must allocate exactly the points rolled (5 or 10) before confirming your turn.
               </li>
             </ul>
           </div>
@@ -78,13 +78,10 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
           <div className="bg-stone-950 p-3.5 rounded-xl border border-stone-800">
             <h3 className="font-bold text-emerald-400 text-sm mb-1 flex items-center gap-2">
               <span>👑</span>
-              <span>3. Guusha Ciyaarta (Kan Ugu Dambeeya ee Xira)</span>
+              <span>3. Victory Condition</span>
             </h3>
             <p className="text-xs text-stone-300 leading-normal">
-              Haddii dadkii kale oo dhan la wada xiro, labada qof ee ugu dambeeya kan la xiro labadooda ma ahan,{' '}
-              <strong className="text-amber-300 font-bold">
-                balse qofka ugu dambeeya ee wax xira ayaa ah Guuleystaha dhabta ah ee Taraq!
-              </strong>
+              When opponents are locked up, the last player remaining free who locks the others wins the game!
             </p>
           </div>
         </div>
@@ -94,7 +91,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
             onClick={onClose}
             className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl text-xs transition-colors"
           >
-            Waan Fahmay (Got It)
+            Got It
           </button>
         </div>
       </div>

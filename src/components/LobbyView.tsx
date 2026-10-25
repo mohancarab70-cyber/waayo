@@ -43,7 +43,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
 
   const handleShareWhatsApp = () => {
     const text = encodeURIComponent(
-      `Kaalay ila ciyaar ciyaarta Taraq Online! 🎲\nRiix link-gan si aad toos ugu soo gasho qolkeyga:\n${joinUrl}`
+      `Play Taraq with me online! 🎲\nJoin my room directly with this link:\n${joinUrl}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
@@ -52,8 +52,8 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
     if (typeof navigator !== 'undefined' && 'share' in navigator) {
       try {
         await navigator.share({
-          title: 'Taraq - Ciyaarta Online-ka ah',
-          text: `Kaalay ila ciyaar Taraq Online! Riix link-gan toos ugu soo biir:`,
+          title: 'Taraq - Online Dice Game',
+          text: `Play Taraq with me online! Click this link to join:`,
           url: joinUrl,
         });
         soundManager.playClick();
@@ -82,19 +82,19 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
             <div className="flex items-center gap-2">
               <span className="text-xl">🔗</span>
               <h1 className="text-base sm:text-lg font-black text-amber-400">
-                Link-ga Casuumaadda Qolka (Invitation Link)
+                Invite Players
               </h1>
               <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-600 text-emerald-300 text-[10px] font-bold">
-                Toos u Shaqeynaya ⚡
+                Live ⚡
               </span>
             </div>
             <p className="text-xs text-stone-300 mt-1">
-              Link-gan u dir asxaabtaada — marka ay riixaan toos ayay qolkaaga ugu soo biirayaan adigoon fure la gelinayn!
+              Share this link with friends so they can join instantly without entering a code.
             </p>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="text-[11px] text-stone-400 font-semibold">Koodhka:</span>
+            <span className="text-[11px] text-stone-400 font-semibold">Room Code:</span>
             <span className="px-3 py-1 bg-stone-950 border border-stone-800 rounded-xl font-mono font-black text-amber-400 text-sm tracking-wider">
               {room.roomCode}
             </span>
@@ -110,7 +110,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
           <div
             onClick={handleCopyLink}
             className="flex-1 bg-stone-950 border border-amber-600/40 hover:border-amber-400 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 cursor-pointer group transition-all shadow-inner"
-            title="Riix si aad u koobiyeysato link-ga"
+            title="Click to copy link"
           >
             <div className="flex items-center gap-2.5 overflow-hidden">
               <span className="text-amber-400 text-lg">🔗</span>
@@ -119,7 +119,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
               </span>
             </div>
             <span className="text-[11px] text-amber-400 font-bold whitespace-nowrap bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 group-hover:bg-amber-500/20 transition-all">
-              {copiedLink ? '✓ Waa la koobiyay!' : 'Riix si aad u qaadato'}
+              {copiedLink ? '✓ Copied!' : 'Click to copy'}
             </span>
           </div>
 
@@ -134,13 +134,13 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
               }`}
             >
               <span>{copiedLink ? '✓' : '📋'}</span>
-              <span>{copiedLink ? 'Link-gii Waa la Koobiyay!' : 'Koobiyeey Link-ga'}</span>
+              <span>{copiedLink ? 'Link Copied!' : 'Copy Link'}</span>
             </button>
 
             <button
               onClick={handleShareWhatsApp}
               className="flex-1 sm:flex-none px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-950/40 cursor-pointer whitespace-nowrap"
-              title="Toos ugu dir WhatsApp asxaabtaada"
+              title="Share with friends on WhatsApp"
             >
               <span>💬</span>
               <span>WhatsApp</span>
@@ -150,10 +150,10 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
               <button
                 onClick={handleNativeShare}
                 className="px-3.5 py-3 rounded-2xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all border border-stone-700 cursor-pointer"
-                title="Wadaag (Share) meel kasta"
+                title="Share link"
               >
                 <span>📤</span>
-                <span className="hidden sm:inline">Wadaag</span>
+                <span className="hidden sm:inline">Share</span>
               </button>
             )}
           </div>
@@ -164,7 +164,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
           <div className="bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 text-xs px-4 py-2 rounded-xl flex items-center gap-2 animate-fade-in font-medium">
             <span>✅</span>
             <span>
-              Link-ga waa la koobiyay! Toos ugu dir asxaabtaada (WhatsApp, Telegram, ama SMS) si ay toos kuugu soo galaan!
+              Invite link copied! Send it via WhatsApp, Telegram, or SMS.
             </span>
           </div>
         )}
@@ -177,7 +177,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="text-base font-bold text-stone-200 flex items-center gap-2">
                 <span>👥</span>
-                <span>Asxaabta Qolka ku Jirta ({room.players.length}/{room.settings.maxPlayers || 20})</span>
+                <span>Joined Players ({room.players.length}/{room.settings.maxPlayers || 20})</span>
               </h2>
               {isHost && room.players.length < (room.settings.maxPlayers || 20) && (
                 <div className="flex items-center gap-2">
@@ -201,9 +201,9 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
                     <button
                       onClick={() => onAddBot(20 - room.players.length)}
                       className="text-xs px-2.5 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 font-medium border border-stone-700 transition-colors"
-                      title="Ka dhig 20 ciyaartooy"
+                      title="Fill room to 20 players"
                     >
-                      Buuxi 20
+                      Fill 20
                     </button>
                   )}
                 </div>
@@ -231,7 +231,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
                           <span className="truncate">{player.name}</span>
                           {isYou && (
                             <span className="text-[9px] text-emerald-400 bg-emerald-950/50 px-1 rounded border border-emerald-800 shrink-0">
-                              Adiga
+                              You
                             </span>
                           )}
                           {player.isHost && (
@@ -241,7 +241,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
                           )}
                         </div>
                         <div className="text-[10px] text-stone-400">
-                          {player.isAi ? '🤖 Kumbuyuutar (Bot)' : player.connected ? '🟢 Khadka ku jira' : '⚪ Khadka ka maqan'}
+                          {player.isAi ? '🤖 Bot' : player.connected ? '🟢 Online' : '⚪ Offline'}
                         </div>
                       </div>
                     </div>
@@ -250,7 +250,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
                       <button
                         onClick={() => onRemovePlayer(player.id)}
                         className="text-stone-500 hover:text-red-400 p-1 rounded transition-colors text-xs shrink-0"
-                        title="Ka saar"
+                        title="Remove player"
                       >
                         ✕
                       </button>
@@ -270,17 +270,17 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
                 className="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-base"
               >
                 <span>🔥</span>
-                <span>Bilow Ciyaarta (Start Game)</span>
+                <span>Start Game</span>
               </button>
               {!canStart && (
                 <p className="text-xs text-stone-400 text-center">
-                  Ugu yaraan 2 ciyaaryahan ayaa loo baahan yahay. Ku dar Bot ama la wadaag koodhka saaxiib!
+                  At least 2 players needed. Add bots or share your invite link!
                 </p>
               )}
             </div>
           ) : (
             <div className="mt-2 pt-4 border-t border-stone-800 text-center text-xs text-stone-400 italic">
-              Waxaa la sugayaa marti-geliyaha inuu bilaabo ciyaarta...
+              Waiting for host to start the game...
             </div>
           )}
         </div>
@@ -290,17 +290,17 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
           <div>
             <h2 className="text-base font-bold text-stone-200 flex items-center gap-2 mb-3">
               <span>💬</span>
-              <span>Diiwaanka Qolka & Wadahadalka</span>
+              <span>Room Activity & Chat</span>
             </h2>
             <div className="flex flex-col gap-2 overflow-y-auto max-h-[240px] pr-1">
               {room.logs.length === 0 ? (
                 <div className="text-xs text-stone-500 italic text-center py-8">
-                  Qoraallada halkan ayey ka soo muuqan doonaan...
+                  Activity and messages appear here...
                 </div>
               ) : (
                 room.logs.slice(0, 15).map((log) => (
                   <div key={log.id} className="text-xs text-stone-300 bg-stone-950/60 p-2 rounded-lg border border-stone-800/60">
-                    {log.textSo}
+                    {log.textEn || log.textSo}
                   </div>
                 ))
               )}
@@ -313,7 +313,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
               type="text"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Fariin u dir asxaabta..."
+              placeholder="Send message to room..."
               className="flex-1 bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-xs text-stone-200 focus:outline-none focus:border-amber-500"
               maxLength={100}
             />
@@ -321,7 +321,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({
               type="submit"
               className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-amber-400 rounded-xl text-xs font-semibold transition-colors"
             >
-              Dir
+              Send
             </button>
           </form>
         </div>

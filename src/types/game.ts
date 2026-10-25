@@ -42,6 +42,7 @@ export interface RoomState {
   settings: RoomSettings;
   logs: GameLog[];
   winnerId: string | null;
+  roundNumber: number;
 }
 
 export interface PointAllocation {

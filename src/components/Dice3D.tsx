@@ -7,6 +7,7 @@ interface Dice3DProps {
   isRolling: boolean;
   canRoll: boolean;
   onRoll: () => void;
+  onRollComplete?: (val: DiceValue) => void;
   pendingPoints?: number;
 }
 
@@ -15,6 +16,7 @@ export const Dice3D: React.FC<Dice3DProps> = ({
   isRolling,
   canRoll,
   onRoll,
+  onRollComplete,
 }) => {
   const [internalRolling, setInternalRolling] = useState(false);
   const [justLanded, setJustLanded] = useState(false);
@@ -26,7 +28,11 @@ export const Dice3D: React.FC<Dice3DProps> = ({
 
   // When value changes from outside (e.g. roll landed or bot rolled)
   useEffect(() => {
-    if (value && value !== prevValueRef.current) {
+    if (!value) {
+      prevValueRef.current = null;
+      return;
+    }
+    if (value !== prevValueRef.current) {
       prevValueRef.current = value;
       startStandardRollAnimation(value);
     }
@@ -67,6 +73,7 @@ export const Dice3D: React.FC<Dice3DProps> = ({
         setInternalRolling(false);
         setJustLanded(true);
         soundManager.playDiceLand(finalVal === 5 || finalVal === 6);
+        onRollComplete?.(finalVal);
 
         // Remove pop animation class after 450ms
         timeoutRef.current = setTimeout(() => {
@@ -81,6 +88,11 @@ export const Dice3D: React.FC<Dice3DProps> = ({
     soundManager.playDiceShake();
     setInternalRolling(true);
     onRoll();
+
+    // Safety fail-safe timeout
+    setTimeout(() => {
+      setInternalRolling(false);
+    }, 1500);
   };
 
   const activeRolling = isRolling || internalRolling;
@@ -149,7 +161,7 @@ export const Dice3D: React.FC<Dice3DProps> = ({
         {/* The Standard High-Quality Dice Face */}
         <div
           onClick={canRoll ? handleRollClick : undefined}
-          title={canRoll ? 'Guji halkan si aad u tuurto laadhuuda!' : undefined}
+          title={canRoll ? 'Click to roll the dice!' : undefined}
           className={`w-28 h-28 sm:w-32 sm:h-32 rounded-3xl p-3.5 relative flex items-center justify-center transition-all ${
             canRoll && !activeRolling
               ? 'cursor-pointer hover:scale-105 active:scale-95'
@@ -181,32 +193,32 @@ export const Dice3D: React.FC<Dice3DProps> = ({
         {activeRolling ? (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-stone-900/90 border border-amber-500/30 text-amber-300 text-xs font-semibold animate-pulse">
             <span className="text-base animate-spin">🎲</span>
-            <span>Laadhuuda waa la tuurayaa (Rolling)...</span>
+            <span>Rolling dice...</span>
           </div>
         ) : displayValue ? (
           <div className="animate-fade-in flex flex-col items-center gap-1">
             {displayValue === 5 && (
               <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-amber-500/20 to-amber-600/30 border border-amber-500/60 rounded-xl text-amber-300 text-sm font-bold shadow-lg shadow-amber-950/40">
                 <span className="text-base">⭐</span>
-                <span>Lambar 5: +5 Dhibcood! (Qoondee)</span>
+                <span>Rolled 5: +5 Points</span>
               </div>
             )}
             {displayValue === 6 && (
               <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-emerald-500/20 to-emerald-600/30 border border-emerald-500/60 rounded-xl text-emerald-300 text-sm font-bold shadow-lg shadow-emerald-950/40">
                 <span className="text-base">🎯</span>
-                <span>Lambar 6: +10 Dhibcood Buuxa! (Qoondee)</span>
+                <span>Rolled 6: +10 Points</span>
               </div>
             )}
             {displayValue < 5 && (
               <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-stone-900/90 text-stone-300 border border-stone-700/80 rounded-xl text-xs font-medium">
                 <span className="text-stone-400">❌</span>
                 <span>
-                  Lambar <strong className="text-white font-mono">{displayValue}</strong> (0 dhibco) · Wareeggu wuu dhaafayaa
+                  Rolled <strong className="text-white font-mono">{displayValue}</strong> (0 pts) · Turn passes
                 </span>
               </div>
             )}
             <span className="text-[10px] text-stone-400 font-mono">
-              (Dhammaan 1 ilaa 6 way soo bixi karaan · 5 iyo 6 kaliya ayaa dhibco leh)
+              (Faces 1–6 can roll · Only 5 and 6 score points)
             </span>
           </div>
         ) : null}
@@ -221,7 +233,7 @@ export const Dice3D: React.FC<Dice3DProps> = ({
           className="mt-2 px-8 py-3 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold rounded-2xl shadow-xl shadow-amber-900/40 transition-all flex items-center gap-2.5 text-sm sm:text-base border border-amber-400/40"
         >
           <span className="text-xl">🎲</span>
-          <span>Tuur Laadhuuda (Roll Dice)</span>
+          <span>Roll Dice</span>
         </button>
       )}
     </div>
